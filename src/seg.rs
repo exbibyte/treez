@@ -34,7 +34,7 @@ impl Default for Node {
 
 pub struct TreeSeg {
     _intervals: Vec<Node>,
-    pub _root_index: i64,
+    _root_index: i64,
     // _height: usize,
 }
 
