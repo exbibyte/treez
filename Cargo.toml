@@ -2,7 +2,7 @@
 name = "treez"
 version = "0.1.0"
 authors = ["Yuan Liu <yuan6liu@gmail.com>"]
-description = "collection of useful tree data structures
+description = "A collection of useful tree data structures"
 repository = "https://github.com/clearlycloudy/e2r/"
 keywords = [ "tree", "data structure", "segment", "algorithm" ]
 license = "BSD-2-Clause"
