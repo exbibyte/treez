@@ -11,7 +11,7 @@ struct Node {
     // _num_children: usize,
     _segs: Vec<i32>,
     // _height: usize,
-    _bound_l: i32,
+    _bound_l: i32, //todo: use generic types?
     _bound_r: i32,
 }
 
@@ -139,9 +139,11 @@ impl TreeSeg {
         
         t
     }
+    ///get total number of nodes in tree
     pub fn len_nodes( & self ) -> usize {
         self._intervals.len()
     }
+    ///get a list of segments that is contained in the bound
     pub fn get_segs_from_bound( & self, bound: (i32,i32) ) -> Vec<i32> {
         let l = bound.0;
         let r = bound.1;
