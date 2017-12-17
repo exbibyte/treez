@@ -6,7 +6,7 @@ description = "A collection of useful tree data structures."
 repository = "https://github.com/clearlycloudy/treez/"
 keywords = [ "tree", "segment", "algorithm" ]
 license = "BSD-2-Clause"
-documentation = "https://docs.rs/treez/0.1.2/treez/"
+documentation = "https://docs.rs/treez/0.1.4/treez/"
 
 [dependencies]
 
