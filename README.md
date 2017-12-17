@@ -6,7 +6,7 @@
     - segment tree
       + usage:
       	```rust
-      	let mut segments = vec![];
+	let mut segments = vec![];
       	for i in 0..10 {
             let n = (i*5, 5*i+5, i); //(left_bound,right_bound,segment_id); inclusive bounds
 	    segments.push( n );
