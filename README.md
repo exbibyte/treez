@@ -3,7 +3,9 @@
 ## A collection of useful data structures
 
 ### segment tree
-
+#### implementation: array based
+#### todo: generic type
+#### notes: for static use after initialization
 ```rust
 
 let mut segments = vec![];
@@ -22,6 +24,9 @@ assert!( check.intersection(&query_segs).count() == check.len() );
 ```
 
 ### red black tree
+#### implementation: array based, threshold compaction, minimal heap allocation
+#### todo: optimize internal representation and operations, generic type
+#### notes: comparable performance to BTreeMap
 
 ```rust
 
