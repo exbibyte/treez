@@ -1,14 +1,16 @@
 [package]
 name = "treez"
-version = "0.1.5"
+version = "0.2.0"
 authors = ["Yuan Liu <yuan6liu@gmail.com>"]
 description = "A collection of useful tree data structures."
 repository = "https://github.com/clearlycloudy/treez/"
-keywords = [ "tree", "segment", "algorithm" ]
+keywords = [ "tree", "segment", "red-black", "algorithm" ]
 license = "BSD-2-Clause"
 documentation = "https://docs.rs/treez/0.1.5/treez/"
 
 [dependencies]
+rand = "0.3"
+chrono = "0.4.0"
 
 [lib]
 name = "treez"
