@@ -212,83 +212,118 @@ impl Op for OpAdd {
     }
 }
 
-// ///grad(sin(x)) -> cos(x)
-// struct OpSin {}
-// impl Op for OpSin {
-//     fn get_grad( &self, input: &[f64] ) -> f64 {
-//         assert!( input.len() > 0 );
-//         input[0].cos()
-//     }
-//     fn get_type( &self ) -> OpType {
-//         OpType::SIN
-//     }
-//     fn get_arity( &self ) -> usize {
-//         1
-//     }
-// }
+///y = sin(x); dy/dx = cos(x)
+#[derive(Clone, Debug)]
+struct OpSin {}
+impl Op for OpSin {
+    fn box_clone( & self ) -> Box< Op > {
+        Box::new( (*self).clone() )
+    }
+    fn box_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self )
+    }
+    fn get_grad( &self, input: & [ & f64 ] ) -> Vec< f64 > {
+        assert!( input.len() == 1 );
+        vec![ (*input[0]).cos() ]
+    }
+    fn get_arity( &self ) -> usize {
+        1
+    }
+    fn exec( & self, input: & [ & f64 ] ) -> Vec< f64 > {
+        assert!( input.len() == 1 );
+        vec![ (*input[0]).sin() ]
+    }
+}
 
-// ///grad(cos(x)) -> -sin(x)
-// struct OpCos {}
-// impl Op for OpCos {
-//     fn get_grad( &self, input: &[f64] ) -> f64 {
-//         assert!( input.len() > 0 );
-//         -input[0].sin()
-//     }
-//     fn get_type( &self ) -> OpType {
-//         OpType::COS
-//     }
-//     fn get_arity( &self ) -> usize {
-//         1
-//     }
-// }
+///y = cos(x); dy/dx = -sin(x)
+#[derive(Clone, Debug)]
+struct OpCos {}
+impl Op for OpCos {
+    fn box_clone( & self ) -> Box< Op > {
+        Box::new( (*self).clone() )
+    }
+    fn box_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self )
+    }
+    fn get_grad( &self, input: & [ & f64 ] ) -> Vec< f64 > {
+        assert!( input.len() == 1 );
+        vec![ -(*input[0]).sin() ]
+    }
+    fn get_arity( &self ) -> usize {
+        1
+    }
+    fn exec( & self, input: & [ & f64 ] ) -> Vec< f64 > {
+        assert!( input.len() == 1 );
+        vec![ (*input[0]).cos() ]
+    }
+}
 
 
-// ///grad(tan(x)) -> 1/(cos(x))^2
-// struct OpTan {}
-// impl Op for OpTan {
-//     fn get_grad( &self, input: &[f64] ) -> f64 {
-//         assert!( input.len() > 0 );
-//         let a = input[0].cos();
-//         1f64/(a*a)
-//     }
-//     fn get_type( &self ) -> OpType {
-//         OpType::TAN
-//     }
-//     fn get_arity( &self ) -> usize {
-//         1
-//     }
-// }
+///y = tan(x); dy/dx =  1/(cos(x))^2
+#[derive(Clone, Debug)]
+struct OpTan {}
+impl Op for OpTan {
+    fn box_clone( & self ) -> Box< Op > {
+        Box::new( (*self).clone() )
+    }
+    fn box_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self )
+    }
+    fn get_grad( &self, input: & [ & f64 ] ) -> Vec< f64 > {
+        assert!( input.len() == 1 );
+        vec![ 1f64 / ( ( *input[0] ).cos().powf( 2f64 ) ) ]
+    }
+    fn get_arity( &self ) -> usize {
+        1
+    }
+    fn exec( & self, input: & [ & f64 ] ) -> Vec< f64 > {
+        assert!( input.len() == 1 );
+        vec![ (*input[0]).tan() ]
+    }
+}
 
-// ///grad(a^x) -> ln(a)*a^x
-// struct OpExponential {}
-// impl Op for OpExponential {
-//     fn get_grad( &self, input: &[f64] ) -> f64 {
-//         assert!( input.len() >= 2 );
-//         let a = input[0];
-//         let x = input[1];
-//         a.ln() * a.powf( x )
-//     }
-//     fn get_type( &self ) -> OpType {
-//         OpType::EXPONENTIAL
-//     }
-//     fn get_arity( &self ) -> usize {
-//         2
-//     }
-// }
+///y = a^x; dy/dx = ln(a) * a^x
+#[derive(Clone, Debug)]
+struct OpExponential {}
+impl Op for OpExponential {
+    fn box_clone( & self ) -> Box< Op > {
+        Box::new( (*self).clone() )
+    }
+    fn box_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self )
+    }
+    fn get_grad( &self, input: & [ & f64 ] ) -> Vec< f64 > {
+        assert!( input.len() == 2 );
+        vec![ (*input[0]).ln() * (*input[0]).powf( *input[1] ) ]
+    }
+    fn get_arity( &self ) -> usize {
+        2
+    }
+    fn exec( & self, input: & [ & f64 ] ) -> Vec< f64 > {
+        assert!( input.len() == 2 );
+        vec![ (*input[0]).powf( *input[1] ) ]
+    }
+}
 
-// ///grad(log_base(x)) -> 1/(x*ln(base))
-// struct OpLog {}
-// impl Op for OpLog {
-//     fn get_grad( &self, input: &[f64] ) -> f64 {
-//         assert!( input.len() >= 2 );
-//         let base = input[0];
-//         let x = input[1];
-//         1f64 / ( x * base.ln() )
-//     }
-//     fn get_type( &self ) -> OpType {
-//         OpType::LOG
-//     }
-//     fn get_arity( &self ) -> usize {
-//         2
-//     }
-// }
+///y = log_base(x); dy/dx = 1/(x*ln(base))
+#[derive(Clone, Debug)]
+struct OpLog {}
+impl Op for OpLog {
+    fn box_clone( & self ) -> Box< Op > {
+        Box::new( (*self).clone() )
+    }
+    fn box_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self )
+    }
+    fn get_grad( &self, input: & [ & f64 ] ) -> Vec< f64 > {
+        assert!( input.len() == 2 );
+        vec![ 1f64 / ( (*input[1]) * (*input[0]).ln() ) ]
+    }
+    fn get_arity( &self ) -> usize {
+        2
+    }
+    fn exec( & self, input: & [ & f64 ] ) -> Vec< f64 > {
+        assert!( input.len() == 2 );
+        vec![ (*input[1]).log( *input[0] ) ]
+    }
+}
