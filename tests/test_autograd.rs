@@ -6,35 +6,39 @@ use self::treez::autograd;
 
 #[test]
 fn init() {
-    let mut x : autograd::Link = Default::default();
-    let mut y : autograd::Link = Default::default();
-    x._val = 6f64;
-    y._val = 7f64;
-    let mut z : autograd::Link = Default::default();
-    z._op = Box::new( autograd::OpMul{} );
 
-    let mut buf = vec![ x, y, z ];
-    buf[2].set_precedent( &[ 0, 1 ] );
-    buf[0].set_descendent( &[ 2 ] );
-    buf[1].set_descendent( &[ 2 ] );
+    //context for id generation
+    let mut c : autograd::Context = Default::default();
 
-    let fwd_order = autograd::check_links( buf.as_mut_slice() ).unwrap();
+    //setup variables
+    let mut x = autograd::init_var( & mut c, 6f64 );
+    let mut y = autograd::init_var( & mut c, 7f64 );
+    let mut z = autograd::init_op( & mut c, autograd::OpType::Mul, & mut [ & mut x, & mut y ] );
+    let mut a = autograd::init_var( & mut c, 3f64 );
+    let mut b = autograd::init_op( & mut c, autograd::OpType::Add, & mut [ & mut z, & mut a ] );
+    
+    //do a forward calc and compute gradients back to each variable
+    {
+        let buf = & mut [ & mut x, & mut y, & mut z, & mut a, & mut b ];
 
-    println!( "fwd_order: {:?}", fwd_order );
-    assert!(fwd_order.len() == 3 );
+        let ( id_map, rev_order ) = autograd::check_links( & mut buf[..] ).unwrap();
+        
+        assert!(rev_order.len() == 5 );
+        println!( "rev_order: {:?}", rev_order );
 
-    assert!( buf[2]._val == 42f64 );
+        autograd::compute_grad( & id_map, & mut buf[..], rev_order.as_slice() ).is_ok();
+    }
+    
+    assert!( b._val == 45f64 );
+    assert!( a._val == 3f64 );
+    assert!( z._val == 42f64 );
+    assert!( x._val == 6f64 );
+    assert!( y._val == 7f64 );
 
-    let mut rev_order = fwd_order.clone();
-    rev_order.reverse();
-
-    println!( "rev_order: {:?}", rev_order );
-
-    autograd::compute_grad( buf.as_mut_slice(), rev_order.as_slice() ).is_ok();
-
-    println!( "buf: {:?}", buf );
-    assert!( buf[2]._grad == 1f64 );
-    assert!( buf[0]._grad == 7f64 );
-    assert!( buf[1]._grad == 6f64 );
+    assert!( b._grad == 1f64 );
+    assert!( a._grad == 1f64 );
+    assert!( z._grad == 1f64 );
+    assert!( x._grad == 7f64 );
+    assert!( y._grad == 6f64 );
 
 }

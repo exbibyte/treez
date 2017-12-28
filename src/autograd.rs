@@ -1,8 +1,42 @@
-// use std::collections::HashMap;
+use std::collections::HashMap;
 // use std::collections::VecDeque;
 use std::fmt;
+use std::cell::Cell;
 
 ///implementation of reverse automatic differentiation
+pub struct Context {
+    _buf: Vec< Link >,
+    _id: Cell< usize >,
+}
+
+#[derive(Clone, Debug)]
+pub enum OpType {
+    Mul,
+    Add,
+    Sin,
+    Cos,
+    Tan,
+    Exponential,
+    Log,
+}
+
+impl Default for Context {
+    fn default() -> Context {
+        Context {
+            _buf: vec![],
+            _id: Cell::new( 0usize ),
+        }
+    }
+}
+
+impl Context {
+    fn gen_id( & mut self ) -> usize {
+        let a = self._id.get();
+        *self._id.get_mut() = a + 1usize;
+        a + 1
+    }
+}
+
 
 #[derive(Clone, Debug)]
 pub struct Link {
@@ -13,6 +47,7 @@ pub struct Link {
     pub _op: Box< Op >,
     pub _val: f64,
     pub _grad: f64,
+    pub _id: usize,
     
 }
 
@@ -27,9 +62,10 @@ impl Default for Link {
         Link {
             _precedent: vec![],
             _descendent: vec![],
-            _op: Box::new( OpLeaf{} ),
+            _op: Box::new( OpLeaf{} ), 
             _val: 0f64,
             _grad: 0f64,
+            _id: 0usize,
         }
     }
 }
@@ -64,49 +100,98 @@ impl Link {
     }
 }
 
+pub fn init( c: & mut Context ) -> Link {
+    let a : usize = c.gen_id();
+    let mut l : Link = Default::default();
+    l._id = a;
+    l
+}
+pub fn init_var( c: & mut Context, v: f64 ) -> Link {
+    let a : usize = c.gen_id();
+    let mut l : Link = Default::default();
+    l._id = a;
+    l._val = v;
+    l
+}
+pub fn init_op( c: & mut Context, op: OpType, args: & mut [ & mut Link ] ) -> Link {
+    let a : usize = c.gen_id();
+    let mut l : Link = Default::default();
+    l._id = a;
+    let b : Box< Op > = match op {
+        OpType::Mul => { Box::new( OpMul{} ) },
+        OpType::Add => { Box::new( OpAdd{} ) },
+        OpType::Sin => { Box::new( OpSin{} ) },
+        OpType::Cos => { Box::new( OpCos{} ) },
+        OpType::Tan => { Box::new( OpTan{} ) },
+        OpType::Exponential => { Box::new( OpExponential{} ) },
+        OpType::Log => { Box::new( OpLog{} ) },
+    };
+    l._op = b;
+    let arg_ids : Vec< usize > = args.iter().map( |x| x._id ).collect();
+    l.set_precedent( arg_ids.as_slice() );
+    for i in args {
+        (*i).set_descendent( & [ a ] );
+    }
+    l
+}
+
 ///checker for link validity, computes forward values, and outputs forward pass order
-pub fn check_links( link: & mut [Link] ) -> Result< Vec<usize>, &'static str > {
+pub fn check_links( link: & mut [ & mut Link] ) -> Result< ( HashMap<usize,usize>, Vec<usize> ), &'static str > {
     //collect all leaf links that have no incoming dependencies
 
-    let mut l : Vec< usize > = link.iter().enumerate().filter_map( |(e,x)| if x._precedent.len() == 0 { Some(e) } else { None } ).collect();
+
+    let mut l : Vec< usize > = link.iter().enumerate().filter_map( |(_,x)| if x._precedent.len() == 0 { Some(x._id) } else { None } ).collect();
     // println!("collected leaves: {:?}", l );
     let mut checked = vec![ false; link.len() ];
     let mut temp : Vec< usize > = vec![];
-    let mut fwd_order = vec![];
+    let mut eval_order = vec![];
+    //map id to index in vec
+    let mut id_map = HashMap::new();
+    for (e,i) in link.iter().enumerate() {
+        id_map.insert( i._id, e );
+    }
+    
     // println!("link.len: {:?}", link.len() );
     while l.len() > 0 || temp.len() > 0 {
         // println!("l.len: {:?}", l.len() );
         for i in l.iter() {
             // println!("checking: {}", i );
-            link[*i].check()?;
+
+            let index_i = *id_map.get(i).unwrap();
+            
+            link[index_i].check()?;
             let ret = {
                 //get values from precendent and compute forward val
                 let mut params = vec![];
-                for j in link[*i].get_precedent() {
-                    let ref v = link[*j]._val;
+                for j in link[index_i].get_precedent() {
+                    let index_j = *id_map.get(j).unwrap();
+                    let ref v = link[index_j]._val;
                     params.push(v);
                 }
-                link[*i]._op.exec( params.as_slice() )
+                link[index_i]._op.exec( params.as_slice() )
             };
             if ret.len() > 0 {
                 //store forward val
-                link[*i]._val = ret[0];
+                link[index_i]._val = ret[0];
             }
             //queue descendents
-            for j in link[*i].get_descendent() {
-                if checked[*j] == false {
-                    checked[*j] = true;
+            for j in link[index_i].get_descendent() {
+                let index_j = *id_map.get(j).unwrap();
+                if checked[index_j] == false {
+                    checked[index_j] = true;
                     temp.push(*j);
                 }
             }
-            fwd_order.push(*i);
+            eval_order.push(index_i);
         }
         l = temp.drain(..).collect();
     }
-    Ok( fwd_order )
+    eval_order.reverse();
+    //output the forward order in terms of index of the input link
+    Ok( ( id_map, eval_order ) )
 }
 
-pub fn compute_grad( link: & mut [Link], eval_order: &[usize] ) -> Result< (), &'static str > {
+pub fn compute_grad( id_map: & HashMap< usize, usize >, link: & mut [ & mut Link], eval_order: &[usize] ) -> Result< (), &'static str > {
     if eval_order.len() > 0 {
         link[*eval_order.first().unwrap()]._grad = 1f64;
     }
@@ -114,7 +199,8 @@ pub fn compute_grad( link: & mut [Link], eval_order: &[usize] ) -> Result< (), &
         //get values from precendent
         let mut params = vec![];
         for j in link[*i].get_precedent() {
-            let ref v = link[*j]._val;
+            let index_j = *id_map.get(j).unwrap();
+            let ref v = link[index_j]._val;
             params.push(v);
         }
         //compute and accumulate backward gradient
@@ -126,7 +212,8 @@ pub fn compute_grad( link: & mut [Link], eval_order: &[usize] ) -> Result< (), &
         let mut index = 0;
         let v =  { link[*i].get_precedent().iter().cloned().collect::<Vec< usize > >() };
         for j in v {
-            link[j]._grad += g[index] * link[*i]._grad;
+            let index_j = *id_map.get(&j).unwrap();
+            link[index_j]._grad += g[index] * link[*i]._grad;
             index += 1;
         }
     }
@@ -200,8 +287,8 @@ impl Op for OpAdd {
     }
     fn get_grad( &self, input: & [ & f64 ] ) -> Vec< f64 > {
         assert!( input.len() == 2 );
-        vec![ *input[0],
-              *input[1] ]
+        vec![ 1f64,
+              1f64 ]
     }
     fn get_arity( &self ) -> usize {
         2
