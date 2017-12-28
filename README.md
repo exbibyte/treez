@@ -2,10 +2,10 @@
 
 ## A collection of useful data structures
 
-### segment tree
-#### implementation: array based
-#### todo: generic type
-#### notes: for static use after initialization
+### segment tree  
+#### implementation: array based  
+#### todo: generic type  
+#### notes: for static use after initialization  
 ```rust
 
 let mut segments = vec![];
@@ -23,10 +23,10 @@ assert!( check.intersection(&query_segs).count() == check.len() );
 
 ```
 
-### red black tree
-#### implementation: array based, threshold compaction, minimal heap allocation
-#### todo: optimize internal representation and operations, generic type
-#### notes: comparable performance to BTreeMap
+### red black tree  
+#### implementation: array based, threshold compaction, minimal heap allocation  
+#### todo: optimize internal representation and operations, generic type  
+#### notes: comparable performance to BTreeMap  
 
 ```rust
 
@@ -43,9 +43,9 @@ for i in 0..nums.len() {
 
 ```
 	 
-### reverse automatic gradient differentiation
-#### implementation: array based, scalar variable
-#### todo: vectorize operations instead of scalars, add more test coverage, tweek to more ergonomic interface
+### reverse automatic gradient differentiation  
+#### implementation: array based, scalar variable  
+#### todo: vectorize operations instead of scalars, add more test coverage, tweek to more ergonomic interface  
 
 ```rust
 
