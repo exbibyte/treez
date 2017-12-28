@@ -301,7 +301,7 @@ impl Op for OpAdd {
 
 ///y = sin(x); dy/dx = cos(x)
 #[derive(Clone, Debug)]
-struct OpSin {}
+pub struct OpSin {}
 impl Op for OpSin {
     fn box_clone( & self ) -> Box< Op > {
         Box::new( (*self).clone() )
@@ -324,7 +324,7 @@ impl Op for OpSin {
 
 ///y = cos(x); dy/dx = -sin(x)
 #[derive(Clone, Debug)]
-struct OpCos {}
+pub struct OpCos {}
 impl Op for OpCos {
     fn box_clone( & self ) -> Box< Op > {
         Box::new( (*self).clone() )
@@ -348,7 +348,7 @@ impl Op for OpCos {
 
 ///y = tan(x); dy/dx =  1/(cos(x))^2
 #[derive(Clone, Debug)]
-struct OpTan {}
+pub struct OpTan {}
 impl Op for OpTan {
     fn box_clone( & self ) -> Box< Op > {
         Box::new( (*self).clone() )
@@ -371,7 +371,7 @@ impl Op for OpTan {
 
 ///y = a^x; dy/dx = ln(a) * a^x
 #[derive(Clone, Debug)]
-struct OpExponential {}
+pub struct OpExponential {}
 impl Op for OpExponential {
     fn box_clone( & self ) -> Box< Op > {
         Box::new( (*self).clone() )
@@ -394,7 +394,7 @@ impl Op for OpExponential {
 
 ///y = log_base(x); dy/dx = 1/(x*ln(base))
 #[derive(Clone, Debug)]
-struct OpLog {}
+pub struct OpLog {}
 impl Op for OpLog {
     fn box_clone( & self ) -> Box< Op > {
         Box::new( (*self).clone() )
