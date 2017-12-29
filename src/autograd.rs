@@ -5,8 +5,12 @@ use std::cell::Cell;
 
 ///implementation of reverse automatic differentiation
 pub struct Context {
-    _buf: Vec< Link >,
     _id: Cell< usize >,
+    pub _id_map: HashMap< usize, usize >,
+    pub _eval_order: Vec< usize >,
+    pub _is_evaluated: Vec< bool >,
+    pub _buf: Vec< Link >,
+    _eval_order_map: HashMap< usize, usize >,
 }
 
 #[derive(Clone, Debug)]
@@ -23,8 +27,12 @@ pub enum OpType {
 impl Default for Context {
     fn default() -> Context {
         Context {
-            _buf: vec![],
             _id: Cell::new( 0usize ),
+            _id_map: HashMap::new(),
+            _eval_order: vec![],
+            _is_evaluated: vec![],
+            _buf: vec![],
+            _eval_order_map: HashMap::new(),
         }
     }
 }
@@ -34,6 +42,12 @@ impl Context {
         let a = self._id.get();
         *self._id.get_mut() = a + 1usize;
         a + 1
+    }
+    pub fn get_var( & mut self, id: usize ) -> Option< & Link > {
+        match self._id_map.get( &id ) {
+            Some( &i ) => Some( & self._buf[i] ),
+            _ => None,
+        }
     }
 }
 
@@ -136,19 +150,25 @@ pub fn init_op( c: & mut Context, op: OpType, args: & mut [ & mut Link ] ) -> Li
 }
 
 ///checker for link validity, computes forward values, and outputs forward pass order
-pub fn check_links( link: & mut [ & mut Link] ) -> Result< ( HashMap<usize,usize>, Vec<usize> ), &'static str > {
+pub fn fwd_pass( c: & mut Context, link: & mut Vec< Link > ) -> Result< Vec< usize >, &'static str > {
     //collect all leaf links that have no incoming dependencies
-
-
     let mut l : Vec< usize > = link.iter().enumerate().filter_map( |(_,x)| if x._precedent.len() == 0 { Some(x._id) } else { None } ).collect();
     // println!("collected leaves: {:?}", l );
     let mut checked = vec![ false; link.len() ];
     let mut temp : Vec< usize > = vec![];
     let mut eval_order = vec![];
+
+    let mut ids = vec![];
+
     //map id to index in vec
-    let mut id_map = HashMap::new();
-    for (e,i) in link.iter().enumerate() {
-        id_map.insert( i._id, e );
+    c._id_map.clear();
+    c._eval_order.clear();
+    c._eval_order_map.clear();
+
+    for (e,i) in link.iter_mut().enumerate() {
+        c._id_map.insert( i._id, e );
+        i._grad = 0f64;
+        ids.push( i._id );
     }
     
     // println!("link.len: {:?}", link.len() );
@@ -157,14 +177,14 @@ pub fn check_links( link: & mut [ & mut Link] ) -> Result< ( HashMap<usize,usize
         for i in l.iter() {
             // println!("checking: {}", i );
 
-            let index_i = *id_map.get(i).unwrap();
+            let index_i = *c._id_map.get(i).unwrap();
             
             link[index_i].check()?;
             let ret = {
                 //get values from precendent and compute forward val
                 let mut params = vec![];
                 for j in link[index_i].get_precedent() {
-                    let index_j = *id_map.get(j).unwrap();
+                    let index_j = *c._id_map.get(j).unwrap();
                     let ref v = link[index_j]._val;
                     params.push(v);
                 }
@@ -176,7 +196,7 @@ pub fn check_links( link: & mut [ & mut Link] ) -> Result< ( HashMap<usize,usize
             }
             //queue descendents
             for j in link[index_i].get_descendent() {
-                let index_j = *id_map.get(j).unwrap();
+                let index_j = *c._id_map.get(j).unwrap();
                 if checked[index_j] == false {
                     checked[index_j] = true;
                     temp.push(*j);
@@ -187,19 +207,57 @@ pub fn check_links( link: & mut [ & mut Link] ) -> Result< ( HashMap<usize,usize
         l = temp.drain(..).collect();
     }
     eval_order.reverse();
-    //output the forward order in terms of index of the input link
-    Ok( ( id_map, eval_order ) )
+    
+    c._buf = link.drain(..).collect();
+
+    //save the forward order in terms of index of the input link
+    c._eval_order = eval_order;
+    c._is_evaluated = vec![ false; c._eval_order.len() ];
+
+    for (e,v) in c._eval_order.iter().enumerate() {
+        c._eval_order_map.insert(*v,e);
+    }
+
+    Ok( ids )
 }
 
-pub fn compute_grad( id_map: & HashMap< usize, usize >, link: & mut [ & mut Link], eval_order: &[usize] ) -> Result< (), &'static str > {
-    if eval_order.len() > 0 {
-        link[*eval_order.first().unwrap()]._grad = 1f64;
+///computes dy/dx and other variables as well back propagating from y
+pub fn compute_grad( c: & mut Context, y: usize, x: usize ) -> Result< f64, &'static str > {
+
+    let index_y = *c._id_map.get(&y).unwrap();
+    let index_x = *c._id_map.get(&x).unwrap();
+    if c._is_evaluated[ index_y ] {
+        return Ok( c._buf[ index_x ]._grad )
     }
-    for i in eval_order {
+
+    //reset and do gradient compute starting at y
+    for i in c._is_evaluated.iter_mut() {
+        *i = false;
+    }
+
+    // println!("eval order: {:?}", c._eval_order );
+    
+    let index_y = *c._id_map.get(&y).unwrap();
+
+    // println!("y: {:?}", index_y );
+    
+    assert!( index_y < c._eval_order.len() );
+
+    let ref mut link = & mut c._buf[..];
+    for i in link.iter_mut() {
+        i._grad = 0f64;
+    }
+
+    let index_y_order = *c._eval_order_map.get( & index_y ).unwrap();
+    
+    if c._eval_order.len() > 0 {
+        link[ c._eval_order[ index_y_order ] ]._grad = 1f64;
+    }
+    for i in c._eval_order.iter() {
         //get values from precendent
         let mut params = vec![];
         for j in link[*i].get_precedent() {
-            let index_j = *id_map.get(j).unwrap();
+            let index_j = *c._id_map.get(j).unwrap();
             let ref v = link[index_j]._val;
             params.push(v);
         }
@@ -212,12 +270,16 @@ pub fn compute_grad( id_map: & HashMap< usize, usize >, link: & mut [ & mut Link
         let mut index = 0;
         let v =  { link[*i].get_precedent().iter().cloned().collect::<Vec< usize > >() };
         for j in v {
-            let index_j = *id_map.get(&j).unwrap();
+            let index_j = *c._id_map.get(&j).unwrap();
             link[index_j]._grad += g[index] * link[*i]._grad;
             index += 1;
         }
     }
-    Ok( () )
+    
+    c._is_evaluated[ index_y ] = true;
+
+    let ans = link[ index_x ]._grad;
+    Ok( ans )
 }
 
 ///forward Op and gradient interface
