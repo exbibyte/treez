@@ -2,14 +2,15 @@ use std::collections::HashMap;
 // use std::collections::VecDeque;
 use std::fmt;
 use std::cell::Cell;
+use std::cmp;
 
 ///implementation of reverse automatic differentiation
 pub struct Context {
     _id: Cell< usize >,
-    pub _id_map: HashMap< usize, usize >,
-    pub _eval_order: Vec< usize >,
-    pub _is_evaluated: Vec< bool >,
-    pub _buf: Vec< Link >,
+    _id_map: HashMap< usize, usize >,
+    _eval_order: Vec< usize >,
+    _is_evaluated: usize,
+    _buf: Vec< Link >,
     _eval_order_map: HashMap< usize, usize >,
 }
 
@@ -30,7 +31,7 @@ impl Default for Context {
             _id: Cell::new( 0usize ),
             _id_map: HashMap::new(),
             _eval_order: vec![],
-            _is_evaluated: vec![],
+            _is_evaluated: <usize>::max_value(),
             _buf: vec![],
             _eval_order_map: HashMap::new(),
         }
@@ -59,8 +60,8 @@ pub struct Link {
     //outgoing nodes in the forward computation graph
     pub _descendent: Vec< usize >,
     pub _op: Box< Op >,
-    pub _val: f64,
-    pub _grad: f64,
+    pub _val: Vec< f64 >,
+    pub _grad: Vec< f64 >,
     pub _id: usize,
     
 }
@@ -77,8 +78,8 @@ impl Default for Link {
             _precedent: vec![],
             _descendent: vec![],
             _op: Box::new( OpLeaf{} ), 
-            _val: 0f64,
-            _grad: 0f64,
+            _val: vec![],
+            _grad: vec![],
             _id: 0usize,
         }
     }
@@ -120,11 +121,11 @@ pub fn init( c: & mut Context ) -> Link {
     l._id = a;
     l
 }
-pub fn init_var( c: & mut Context, v: f64 ) -> Link {
+pub fn init_var( c: & mut Context, v: & [ f64 ] ) -> Link {
     let a : usize = c.gen_id();
     let mut l : Link = Default::default();
     l._id = a;
-    l._val = v;
+    l._val = v.to_vec();
     l
 }
 pub fn init_op( c: & mut Context, op: OpType, args: & mut [ & mut Link ] ) -> Link {
@@ -139,6 +140,7 @@ pub fn init_op( c: & mut Context, op: OpType, args: & mut [ & mut Link ] ) -> Li
         OpType::Tan => { Box::new( OpTan{} ) },
         OpType::Exponential => { Box::new( OpExponential{} ) },
         OpType::Log => { Box::new( OpLog{} ) },
+        // _ => { panic!( "unsupported op" ); },
     };
     l._op = b;
     let arg_ids : Vec< usize > = args.iter().map( |x| x._id ).collect();
@@ -151,6 +153,8 @@ pub fn init_op( c: & mut Context, op: OpType, args: & mut [ & mut Link ] ) -> Li
 
 ///checker for link validity, computes forward values, and outputs forward pass order
 pub fn fwd_pass( c: & mut Context, link: & mut Vec< Link > ) -> Result< Vec< usize >, &'static str > {
+    c._is_evaluated = <usize>::max_value();
+
     //collect all leaf links that have no incoming dependencies
     let mut l : Vec< usize > = link.iter().enumerate().filter_map( |(_,x)| if x._precedent.len() == 0 { Some(x._id) } else { None } ).collect();
     // println!("collected leaves: {:?}", l );
@@ -167,8 +171,14 @@ pub fn fwd_pass( c: & mut Context, link: & mut Vec< Link > ) -> Result< Vec< usi
 
     for (e,i) in link.iter_mut().enumerate() {
         c._id_map.insert( i._id, e );
-        i._grad = 0f64;
         ids.push( i._id );
+    }
+
+    //initilize gradient vector of leaf variables
+    for i in l.iter() {
+        let index_i = *c._id_map.get(&i).unwrap();
+        link[ index_i ]._grad = vec![ 0f64; link[index_i]._val.len() ];
+        // println!("init grad: {:?}", link[ index_i ]._grad );
     }
     
     // println!("link.len: {:?}", link.len() );
@@ -181,19 +191,62 @@ pub fn fwd_pass( c: & mut Context, link: & mut Vec< Link > ) -> Result< Vec< usi
             
             link[index_i].check()?;
             let ret = {
+
+                let mut max_param_size = 0usize;
+                let mut min_param_size = <usize>::max_value();
+                let mut precedent_val_len = vec![];
+
+                //presweep to determine if any scalar variable needs to be reshaped
+                for j in link[index_i].get_precedent() {
+                    let index_j = *c._id_map.get(j).unwrap();
+                    let param_len = link[index_j]._val.len();
+                    max_param_size = cmp::max( max_param_size, param_len );
+                    min_param_size = cmp::min( min_param_size, param_len );
+                    precedent_val_len.push( ( index_j, param_len ) );
+                }
+
+                if min_param_size != max_param_size {
+                    for j in precedent_val_len {
+                        let index = j.0;
+                        let current_len = j.1;
+                        if current_len == max_param_size {
+                            continue;
+                        } else if current_len == 1 {
+                            //reshape this scalar to a vector
+                            link[ index ]._val = {
+                                let v = link[index]._val[0];
+                                vec![ v; max_param_size ]
+                            };
+                            link[ index ]._grad = {
+                                let v = link[index]._grad[0];
+                                vec![ v; max_param_size ]
+                            };
+                        } else {
+                            panic!( "variable length not consistent" )
+                        }
+                    }
+                }
+
                 //get values from precendent and compute forward val
                 let mut params = vec![];
                 for j in link[index_i].get_precedent() {
                     let index_j = *c._id_map.get(j).unwrap();
-                    let ref v = link[index_j]._val;
+                    let v = link[index_j]._val.as_slice();
                     params.push(v);
                 }
-                link[index_i]._op.exec( params.as_slice() )
+                link[index_i]._op.exec( params )
             };
+
             if ret.len() > 0 {
                 //store forward val
-                link[index_i]._val = ret[0];
+                link[index_i]._val = ret;
+                //initilize gradient vector of non-leaf variables
+                if link[index_i]._grad.len() != link[index_i]._val.len() {
+                    link[index_i]._grad = vec![ 0f64; link[index_i]._val.len() ];
+                }
+                // println!("init graident vector for node: {}, {:?}", index_i, link[index_i]._grad );
             }
+            
             //queue descendents
             for j in link[index_i].get_descendent() {
                 let index_j = *c._id_map.get(j).unwrap();
@@ -212,7 +265,6 @@ pub fn fwd_pass( c: & mut Context, link: & mut Vec< Link > ) -> Result< Vec< usi
 
     //save the forward order in terms of index of the input link
     c._eval_order = eval_order;
-    c._is_evaluated = vec![ false; c._eval_order.len() ];
 
     for (e,v) in c._eval_order.iter().enumerate() {
         c._eval_order_map.insert(*v,e);
@@ -222,18 +274,16 @@ pub fn fwd_pass( c: & mut Context, link: & mut Vec< Link > ) -> Result< Vec< usi
 }
 
 ///computes dy/dx and other variables as well back propagating from y
-pub fn compute_grad( c: & mut Context, y: usize, x: usize ) -> Result< f64, &'static str > {
+pub fn compute_grad( c: & mut Context, y: usize, x: usize ) -> Result< Vec< f64 >, &'static str > {
 
     let index_y = *c._id_map.get(&y).unwrap();
     let index_x = *c._id_map.get(&x).unwrap();
-    if c._is_evaluated[ index_y ] {
-        return Ok( c._buf[ index_x ]._grad )
+    if c._is_evaluated ==  index_y {
+        return Ok( c._buf[ index_x ]._grad.clone() )
     }
 
     //reset and do gradient compute starting at y
-    for i in c._is_evaluated.iter_mut() {
-        *i = false;
-    }
+    c._is_evaluated = <usize>::max_value();
 
     // println!("eval order: {:?}", c._eval_order );
     
@@ -244,41 +294,56 @@ pub fn compute_grad( c: & mut Context, y: usize, x: usize ) -> Result< f64, &'st
     assert!( index_y < c._eval_order.len() );
 
     let ref mut link = & mut c._buf[..];
+
+    //reset gradients of all variables
     for i in link.iter_mut() {
-        i._grad = 0f64;
+        for j in i._grad.iter_mut() {
+            *j = 0f64;
+        }
     }
 
     let index_y_order = *c._eval_order_map.get( & index_y ).unwrap();
     
     if c._eval_order.len() > 0 {
-        link[ c._eval_order[ index_y_order ] ]._grad = 1f64;
+        for i in link[ c._eval_order[ index_y_order ] ]._grad.iter_mut() {
+            *i = 1f64;
+        }
     }
     for i in c._eval_order.iter() {
         //get values from precendent
         let mut params = vec![];
         for j in link[*i].get_precedent() {
             let index_j = *c._id_map.get(j).unwrap();
-            let ref v = link[index_j]._val;
-            params.push(v);
+            let v = &link[index_j]._val[..];
+            params.push( v );
         }
-        //compute and accumulate backward gradient
+
+        //compute backward gradient
         let g = link[*i]._op.get_grad( params.as_slice() );
-        // println!("i: {}", *i );
-        // println!( "g: {:?}", g );
-        // println!( "prece: {:?}", link[*i].get_precedent().len() );
+        //g is a vector of vector of computed graidents of precedents
+
         assert!( g.len() == link[*i].get_precedent().len() );
         let mut index = 0;
         let v =  { link[*i].get_precedent().iter().cloned().collect::<Vec< usize > >() };
-        for j in v {
+
+        //accumulate gradients backward for precedents
+        for j in v { //for each precedent
+
             let index_j = *c._id_map.get(&j).unwrap();
-            link[index_j]._grad += g[index] * link[*i]._grad;
+
+            assert!( g[index].len() == link[*i]._grad.len() );
+            assert!( g[index].len() == link[index_j]._grad.len() );
+
+            for n in 0..g[index].len() { //for each scalar in gradient vector
+                link[index_j]._grad[n] += g[index][n] * link[*i]._grad[n];
+            }
             index += 1;
         }
     }
-    
-    c._is_evaluated[ index_y ] = true;
 
-    let ans = link[ index_x ]._grad;
+    c._is_evaluated = index_y;
+
+    let ans = link[ index_x ]._grad.clone();
     Ok( ans )
 }
 
@@ -286,8 +351,8 @@ pub fn compute_grad( c: & mut Context, y: usize, x: usize ) -> Result< f64, &'st
 pub trait Op : fmt::Debug {
     fn box_clone( & self ) -> Box< Op >;
     fn box_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result;
-    fn exec( & self, & [ & f64 ] ) -> Vec< f64 >;
-    fn get_grad( & self, & [ & f64 ] ) -> Vec< f64 >;
+    fn exec( & self, Vec< & [ f64 ] > ) -> Vec< f64 >;
+    fn get_grad( & self, & [ & [ f64 ] ] ) -> Vec< Vec< f64 > >;
     fn get_arity( & self ) -> usize;
 }
     
@@ -301,14 +366,14 @@ impl Op for OpLeaf {
     fn box_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self )
     }
-    fn get_grad( &self, input: &[ & f64 ] ) -> Vec< f64 > {
+    fn get_grad( &self, input: & [ & [ f64 ] ] ) -> Vec< Vec< f64 > > {
         assert!( input.len() == 0 );
         vec![]
     }
     fn get_arity( &self ) -> usize {
         0
     }
-    fn exec( & self, _input: & [ & f64 ] ) -> Vec< f64 > {
+    fn exec( & self, _input: Vec< & [ f64 ] > ) -> Vec< f64 > {
         vec![]
     }
 }
@@ -323,17 +388,34 @@ impl Op for OpMul {
     fn box_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self )
     }
-    fn get_grad( &self, input: &[ & f64 ] ) -> Vec< f64 > {
+    fn get_grad( &self, input: &[ & [ f64 ] ] ) -> Vec< Vec< f64 > > {
         assert!( input.len() == 2 );
-        vec![ *input[1],
-              *input[0] ]
+        if input[0].len() == input[1].len() {
+            vec![
+                (*input[1]).to_vec(),
+                (*input[0]).to_vec()
+            ]
+        } else if input[0].len() == 1 {
+            vec![
+                (*input[1]).to_vec(),
+                vec![ input[0][0]; input[1].len() ]
+            ]
+        } else if input[1].len() == 1 {
+            vec![
+                vec![ input[1][0]; input[0].len() ],
+                (*input[0]).to_vec(),
+            ]
+        } else {
+            panic!( "argument size invalid" );
+        }
     }
     fn get_arity( &self ) -> usize {
         2
     }
-    fn exec( & self, input: & [ & f64 ] ) -> Vec< f64 > {
+    fn exec( & self, input: Vec< & [ f64 ] > ) -> Vec< f64 > {
         assert!( input.len() == 2 );
-        vec![ input[0] * input[1] ]
+        assert!( input[0].len() == input[1].len() );
+        (*input[0]).iter().zip( (*input[1]).iter() ).map( |x| x.0 * x.1 ).collect()
     }
 }
 
@@ -347,17 +429,19 @@ impl Op for OpAdd {
     fn box_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self )
     }
-    fn get_grad( &self, input: & [ & f64 ] ) -> Vec< f64 > {
+    fn get_grad( &self, input: & [ & [ f64 ] ] ) -> Vec< Vec< f64 > > {
         assert!( input.len() == 2 );
-        vec![ 1f64,
-              1f64 ]
+        assert!( input[0].len() == input[1].len() );
+        vec![ vec![ 1f64; (*input[1]).len() ],
+              vec![ 1f64; (*input[0]).len() ] ]
     }
     fn get_arity( &self ) -> usize {
         2
     }
-    fn exec( & self, input: & [ & f64 ] ) -> Vec< f64 > {
+    fn exec( & self, input: Vec< & [ f64 ] > ) -> Vec< f64 > {
         assert!( input.len() == 2 );
-        vec![ input[0] + input[1] ]
+        assert!( input[0].len() == input[1].len() );
+        (*input[0]).iter().zip( (*input[1]).iter() ).map( |x| x.0 + x.1 ).collect()
     }
 }
 
@@ -371,16 +455,16 @@ impl Op for OpSin {
     fn box_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self )
     }
-    fn get_grad( &self, input: & [ & f64 ] ) -> Vec< f64 > {
+    fn get_grad( &self, input: & [ & [ f64 ] ] ) -> Vec< Vec< f64 > > {
         assert!( input.len() == 1 );
-        vec![ (*input[0]).cos() ]
+        vec![ (*input[0]).iter().map( |x| x.cos() ).collect() ]
     }
     fn get_arity( &self ) -> usize {
         1
     }
-    fn exec( & self, input: & [ & f64 ] ) -> Vec< f64 > {
+    fn exec( & self, input: Vec< & [ f64 ] > ) -> Vec< f64 > {
         assert!( input.len() == 1 );
-        vec![ (*input[0]).sin() ]
+        (*input[0]).iter().map( |x| x.sin() ).collect()
     }
 }
 
@@ -394,16 +478,16 @@ impl Op for OpCos {
     fn box_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self )
     }
-    fn get_grad( &self, input: & [ & f64 ] ) -> Vec< f64 > {
+    fn get_grad( &self, input: & [ & [ f64 ] ] ) -> Vec< Vec< f64 > > {
         assert!( input.len() == 1 );
-        vec![ -(*input[0]).sin() ]
+        vec![ (*input[0]).iter().map( |x| -x.cos() ).collect() ]
     }
     fn get_arity( &self ) -> usize {
         1
     }
-    fn exec( & self, input: & [ & f64 ] ) -> Vec< f64 > {
+    fn exec( & self, input: Vec< & [ f64 ] > ) -> Vec< f64 > {
         assert!( input.len() == 1 );
-        vec![ (*input[0]).cos() ]
+        (*input[0]).iter().map( |x| x.cos() ).collect()
     }
 }
 
@@ -418,16 +502,16 @@ impl Op for OpTan {
     fn box_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self )
     }
-    fn get_grad( &self, input: & [ & f64 ] ) -> Vec< f64 > {
+    fn get_grad( &self, input: & [ & [ f64 ] ] ) -> Vec< Vec< f64 > > {
         assert!( input.len() == 1 );
-        vec![ 1f64 / ( ( *input[0] ).cos().powf( 2f64 ) ) ]
+        vec![ (*input[0]).iter().map( |x| 1f64 / ( x.cos().powf( 2f64 ) ) ).collect() ]
     }
     fn get_arity( &self ) -> usize {
         1
     }
-    fn exec( & self, input: & [ & f64 ] ) -> Vec< f64 > {
+    fn exec( & self, input: Vec< & [ f64 ] > ) -> Vec< f64 > {
         assert!( input.len() == 1 );
-        vec![ (*input[0]).tan() ]
+        (*input[0]).iter().map( |x| x.tan() ).collect()
     }
 }
 
@@ -441,16 +525,27 @@ impl Op for OpExponential {
     fn box_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self )
     }
-    fn get_grad( &self, input: & [ & f64 ] ) -> Vec< f64 > {
+    ///input[0]: bases, input[1]: exponents
+    fn get_grad( &self, input: & [ & [ f64 ] ] ) -> Vec< Vec< f64 > > {
         assert!( input.len() == 2 );
-        vec![ (*input[0]).ln() * (*input[0]).powf( *input[1] ) ]
+        assert!( input[0].len() == input[1].len() );
+        vec![ vec![ 0f64; input[0].len()],
+              (*input[0])
+                .iter()
+                .zip( (*input[1]).iter() )
+                .map( |(base,exp)|
+                        (*base).ln() * (*base).powf( *exp ) )
+                .collect()
+        ]
     }
     fn get_arity( &self ) -> usize {
         2
     }
-    fn exec( & self, input: & [ & f64 ] ) -> Vec< f64 > {
+    ///input[0]: bases, input[1]: exponents
+    fn exec( & self, input: Vec< & [ f64 ] > ) -> Vec< f64 > {
         assert!( input.len() == 2 );
-        vec![ (*input[0]).powf( *input[1] ) ]
+        assert!( input[0].len() == input[1].len() );
+        (*input[0]).iter().zip( (*input[1]).iter() ).map( |(base,exp)| (*base).powf(*exp) ).collect()
     }
 }
 
@@ -464,15 +559,26 @@ impl Op for OpLog {
     fn box_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self )
     }
-    fn get_grad( &self, input: & [ & f64 ] ) -> Vec< f64 > {
+    ///input[0]: bases, input[1]: nums
+    fn get_grad( &self, input: & [ & [ f64 ] ] ) -> Vec< Vec< f64 > > {
         assert!( input.len() == 2 );
-        vec![ 1f64 / ( (*input[1]) * (*input[0]).ln() ) ]
+        // vec![ 1f64 / ( (*input[1]) * (*input[0]).ln() ) ]
+        vec![ vec![ 0f64; input[0].len()],
+              (*input[0])
+                .iter()
+                .zip( (*input[1]).iter() )
+                .map( |(base,num)|
+                        1f64 / ( (*num) * (*base).ln() ) )
+                .collect()
+        ]
     }
     fn get_arity( &self ) -> usize {
         2
     }
-    fn exec( & self, input: & [ & f64 ] ) -> Vec< f64 > {
+    ///input[0]: bases, input[1]: nums
+    fn exec( & self, input: Vec< & [ f64 ] > ) -> Vec< f64 > {
         assert!( input.len() == 2 );
-        vec![ (*input[1]).log( *input[0] ) ]
+        assert!( input[0].len() == input[1].len() );
+        (*input[0]).iter().zip( (*input[1]).iter() ).map( |(base,num)| (*num).log(*base) ).collect()
     }
 }
