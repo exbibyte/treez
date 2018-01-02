@@ -2,13 +2,17 @@
 
 ## A collection of useful data structures  
 current implementations: segment tree, rb tree, autograd, indexed tree
+
 work in progress: sarsa/mcts search
 
 
 ### segment tree  
-#### implementation: array based  
-#### todo: generic type  
-#### notes: for static use after initialization  
+#### implementation: array based
+
+#### todo: generic type
+
+#### notes: for static use after initialization
+
 ```rust
 
 let mut segments = vec![];
@@ -27,8 +31,10 @@ assert!( check.intersection(&query_segs).count() == check.len() );
 ```
 
 ### red black tree  
-#### implementation: array based, threshold compaction, minimal heap allocation  
-#### todo: optimize internal representation and operations, generic type  
+#### implementation: array based, threshold compaction, minimal heap allocation
+
+#### todo: optimize internal representation and operations, generic type
+
 #### notes: comparable performance to BTreeMap  
 
 ```rust
@@ -47,7 +53,8 @@ for i in 0..nums.len() {
 ```
 	 
 ### reverse automatic gradient differentiation  
-#### implementation: array based, scalar variable  
+#### implementation: array based, scalar variable
+
 #### todo: add more test coverage, tweek to more ergonomic interface, interval optimization
 
 ```rust
@@ -108,7 +115,8 @@ for i in [ "x", "y", "z", "a", "b" ].iter().zip( var_ids ) {
 ```
 
 ### prefix sum tree
-#### implementation: array based
+#### implementation: array based  
+
 #### todo: support generic commutative operation
 
 ```rust
