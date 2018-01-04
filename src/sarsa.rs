@@ -204,7 +204,7 @@ pub fn search< G, State, Action >( criteria: & SearchCriteria,
             }
             // println!( "checkpoint2");
             //remove all eligibility trace below certain threshold
-            eligibility_trace.retain( |k,v| *v > 0.00000001 );
+            // eligibility_trace.retain( |k,v| *v > 0.00000001 );
 
             //save state and action
             state_episode = state_next;
