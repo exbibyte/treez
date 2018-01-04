@@ -151,7 +151,7 @@ pub fn init_op( c: & mut Context, op: OpType, args: & mut [ & mut Link ] ) -> Li
     l
 }
 
-///checker for link validity, computes forward values, and outputs forward pass order
+///checker for link validity, computes forward values, saves eval order for backward pass in context, and returns ids for input links
 pub fn fwd_pass( c: & mut Context, link: & mut Vec< Link > ) -> Result< Vec< usize >, &'static str > {
     c._is_evaluated = <usize>::max_value();
 
