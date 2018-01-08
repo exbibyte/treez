@@ -1,17 +1,14 @@
-use std::collections::HashMap;
-use std::hash;
-use std::cmp;
-
 extern crate treez;
 
 use self::treez::sarsa;
+use std::f64;
 
 pub struct GameGridWorld {
     _dim: ( usize, usize ),
     _start: ( usize, usize ),
     _end: ( usize, usize ),
     _obstacles: Vec< (usize,usize) >,
-    // _play_path: Vec< ( Action, State ) >,
+    _play_path: Vec< ( State, Action ) >,
 }
 
 #[derive(Eq, PartialEq, Clone, Hash, Debug)]
@@ -28,8 +25,8 @@ pub struct State( usize, usize );
 
 impl sarsa::Game< State, Action > for GameGridWorld {
     fn gen_initial_state( & mut self ) -> State {
+        self._play_path.clear();
         let s = State( self._start.0, self._start.1 );
-        // self._play_path = vec![ ( Action::NONE, s.clone() ) ];
         s
     }
     fn gen_possible_actions( & mut self, s: & State ) -> Vec< Action > {
@@ -82,31 +79,23 @@ impl sarsa::Game< State, Action > for GameGridWorld {
             },
             _ => { panic!{}; },
         };
+        self._play_path.push( ( s.clone(), a.clone() ) );
         let r = if s_next == self._end {
             sarsa::Reward(1.)
         } else {
             sarsa::Reward(0.)
         };
-        // self._play_path.push( ( a.clone(), State( s_next.0, s_next.1 ) ) );
         ( r, State( s_next.0, s_next.1 ) )
     }
-
-    // ///undo previous action and along with it the state
-    // fn undo_previous( & mut self ){
-    //     unimplemented!();
-    // }
-    
-    // ///return the state action chain from the beginning of play
-    // fn get_state_action_chain( & mut self ) -> Vec< ( Action, State ) > {
-    //     self._play_path.clone()
-    // }
-    
-    // fn set_state( & mut self, s: & State ) -> Result< (), & 'static str > {
-        
-    // }
     
     fn is_state_terminal( & mut self, s: & State ) -> bool {
         self._end.0 == s.0 && self._end.1 == s.1
+    }
+    fn get_state_history( & self ) -> Vec< ( State, Action ) > {
+        self._play_path.clone()
+    }
+    fn set_state_history( & mut self, h: & [ (State, Action) ] ) {
+        self._play_path = h.to_vec();
     }
 }
 
@@ -115,24 +104,72 @@ fn sarsa_grid_world() {
 
     //initialize game world
     let mut game = GameGridWorld {
-        _dim: (10,10),
-        _start: (0,0),
-        _end: (5, 5),
-        // _obstacles: vec![ (14, 19), (14, 18), (14, 17) ],
-        _obstacles: vec![],
-        // _play_path: vec![],
+        _dim: (5,5),
+        _start: (4, 0),
+        _end: (0, 0),
+         _obstacles: vec![ (1, 0), (1, 1), (1, 2) ],
+        _play_path: vec![],
     };
     
     
     let sc = sarsa::SearchCriteria {
-        _lambda: 0.9,
+        _lambda: 0.99,
         _gamma: 0.9,
-        _e: 0.1,
-        _alpha: 0.001,
-        _stop_limit: sarsa::StopCondition::EpisodeIter(20),
+        _e: 0.4,
+        _alpha: 0.03,
+        //        _stop_limit: sarsa::StopCondition::EpisodeIter(100), //number of episodes
+        _stop_limit: sarsa::StopCondition::TimeMicro(10_000_000.0), //time allotted to search
     };
 
-    let policy_map = sarsa::search( & sc, & mut game ).unwrap();
+    let ( _policy_map, policy_normalized, expectation ) = sarsa::search( & sc, & mut game ).unwrap();
 
-    println!( "post game play policy: {:?}", policy_map );
+    for i in (0..game._dim.1).rev() {
+        let mut v = vec![];
+        for j in 0..game._dim.0 {
+            let actions_percentage = match policy_normalized.get( &State( j, i ) ) {
+                Some( x ) => { x.clone() },
+                _ => { vec![] },
+            };
+            let best = actions_percentage.iter().
+                fold( (Action::NONE, f64::MIN), |accum, x| if x.1 > accum.1 { x.clone() } else { accum } );
+            
+            let a_text = match best {
+                ( Action::UP, _ ) => { '↑' },
+                ( Action::DOWN , _) => { '↓' },
+                ( Action::LEFT, _ ) => { '←' },
+                ( Action::RIGHT, _ ) => { '→' },
+                _ => { ' ' },
+            };
+            v.push( a_text );
+        }
+        println!( "{:?}", v );
+    }
+
+    println!( "linear normalized optimal policy value" );
+    for i in (0..game._dim.1).rev() {
+        let mut v = vec![];
+        for j in 0..game._dim.0 {
+            let actions_percentage = match policy_normalized.get( &State( j, i ) ) {
+                Some( x ) => { x.clone() },
+                _ => { vec![] },
+            };
+            let best = actions_percentage.iter().
+                fold( (Action::NONE, f64::MIN), |accum, x| if x.1 > accum.1 { x.clone() } else { accum } );
+            let val = match best {
+                ( Action::NONE, _ ) => { 0. },
+                ( _, x ) => { x },
+            };
+            v.push( val );
+        }
+        println!( "{:?}", v );
+    }
+
+    println!( "policy expectation value map" );
+    for i in (0..game._dim.1).rev() {
+        for j in 0..game._dim.0 {
+            let a = expectation.get( &State( j, i ) ).unwrap_or( & 0. );
+            print!( "{:.5} ", a );
+        }
+        print!( "\n" );
+    }
 }
