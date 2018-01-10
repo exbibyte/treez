@@ -132,13 +132,21 @@ fn sarsa_grid_world() {
             };
             let best = actions_percentage.iter().
                 fold( (Action::NONE, f64::MIN), |accum, x| if x.1 > accum.1 { x.clone() } else { accum } );
-            
-            let a_text = match best {
-                ( Action::UP, _ ) => { '↑' },
-                ( Action::DOWN , _) => { '↓' },
-                ( Action::LEFT, _ ) => { '←' },
-                ( Action::RIGHT, _ ) => { '→' },
-                _ => { ' ' },
+
+            let a_text = {
+                if (j,i) == game._end {
+                    '🏁'
+                } else if (j,i) == game._start {
+                    '🚶'
+                } else {
+                    match best {
+                        ( Action::UP, _ ) => { '↑' },
+                        ( Action::DOWN , _) => { '↓' },
+                        ( Action::LEFT, _ ) => { '←' },
+                        ( Action::RIGHT, _ ) => { '→' },
+                        _ => { ' ' },
+                    }
+                }
             };
             v.push( a_text );
         }
