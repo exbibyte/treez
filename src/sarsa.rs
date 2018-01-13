@@ -1,8 +1,7 @@
-///Implementation of model-free SARSA uing eligibility trace update with replacement update
-///specializable to full rollout as in monte carlo,
-///non full rollout combinatorial DP, non full rollout TD(0),
-///or somewhere in between the spectrum.
-///
+///Implementation of model-free SARSA 
+///using eligibility trace update with replacement update,
+///specializable to full rollout, TD(0), or in between.
+///Current policy selection choices are e-greedy or softmax.
 
 extern crate chrono;
 extern crate rand;
@@ -15,7 +14,10 @@ use std::collections::HashSet;
 use std::cmp;
 use self::chrono::prelude::*;
 //use self::rand::{Rng};
-use self::rand::distributions::{IndependentSample, Range};
+// use self::rand::distributions::{IndependentSample, Range};
+
+use policy;
+use softmax;
 
 ///Input search parameters
 #[derive(Debug,Clone)]
@@ -24,32 +26,41 @@ pub struct SearchCriteria {
     pub _lambda: f64,
     ///gamma: discount factor
     pub _gamma: f64,
-    ///e: epsilon greedy policy proportion
-    pub _e: f64,
     ///alpha: correction step size
     pub _alpha: f64,
     ///search stop condition
     pub _stop_limit: StopCondition,
+    ///policy selection
+    pub _policy_select_method: PolicySelectMethod,
 }
 
 impl SearchCriteria {
     pub fn check( & self ) -> Result< (), & 'static str > {
         if self._lambda < 0. || self._lambda > 1. ||
            self._gamma < 0. || self._gamma > 1. ||
-           self._e < 0. || self._e > 1. ||
            self._alpha <= 0.
         {
             Err( "search criteria out of range" )
         } else {
+            match self._policy_select_method {
+                PolicySelectMethod::EpsilonGreedy( x ) => { if x < 0. || x > 1.0 { return Err( "search criteria out of range" ) } },
+                _ => {},
+            }
             Ok( () )
         }
     }
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub enum StopCondition {
     TimeMicro(f64), //time allotted to search
     EpisodeIter(usize), //max iterations allotted to search
+}
+
+#[derive(Debug, Clone)]
+pub enum PolicySelectMethod {
+    EpsilonGreedy( f64 ),
+    Softmax,
 }
 
 pub struct Reward(pub f64);
@@ -70,49 +81,6 @@ pub trait Game< State, Action > where State: Clone + cmp::Eq + hash::Hash, Actio
     fn get_state_history( & self ) -> Vec< ( State, Action ) >;
 
     fn set_state_history( & mut self, h: & [ (State, Action) ] );
-}
-
-///get best(highest) action at input state
-fn get_greedy_action_at_state< State, Action >( hm: & HashMap< (State,Action), f64 >,
-                                                s: & State )
-                                                -> Option< Action >
-    where State: Clone + cmp::Eq + hash::Hash, Action: Clone + cmp::Eq + hash::Hash {
-
-    let v: Vec< ((State, Action), f64) > = hm.iter().filter( |x| (x.0).0 == *s ).map(|x| ( x.0.clone(), x.1.clone() ) ).collect();
-    let p = f64::MIN;
-    let index = v.iter().enumerate().fold(0, |i, x| if (x.1).1 > p { x.0 } else { i } );
-    if index >= v.len() {
-        None
-    } else {
-        Some( (v[index].0).1.clone() )
-    }
-}
-
-///for epsilon proportion of the time, explore using a random action, otherwise use greedy action
-fn e_greedy_select< Action: Clone >( epsilon: f64,
-                                     actions_possible: & [ Action ],
-                                     action_greedy: & Option<Action> )
-                                     -> Action where Action: cmp::PartialEq {
-    let bounds = Range::new( 0., 1. );
-    let mut rng = rand::thread_rng();    
-    let r = bounds.ind_sample( & mut rng );
-
-    let force_random = match *action_greedy {
-        None => { true },
-        Some(_) => {
-            let a = action_greedy.clone().unwrap().clone();
-            !actions_possible.iter().any( |x| *x == a )
-        },
-    };
-
-    if r <= epsilon || force_random {
-        let bounds_array = Range::new( 0, actions_possible.len() );
-        let i = bounds_array.ind_sample( & mut rng );
-        assert!( i < actions_possible.len() );
-        actions_possible[ i ].clone()
-    } else {
-        action_greedy.clone().unwrap().clone()
-    }
 }
 
 ///main entry point for search
@@ -138,13 +106,11 @@ pub fn search< G, State, Action >( criteria: & SearchCriteria,
 
         //init eligibility trace for state value estimation
         let mut eligibility_trace : HashMap< (State, Action), f64 > = HashMap::new();
-        
-        // println!( "iter: {}", iter );
+
         //reset state
         let mut state_episode = g.gen_initial_state();
 
         if g.is_state_terminal( & state_episode ) {
-            // println!( "trivial terminal state detected");
             break;
         }
         
@@ -152,13 +118,28 @@ pub fn search< G, State, Action >( criteria: & SearchCriteria,
         let mut action : Action = {
             let possible_actions = g.gen_possible_actions( & state_init );
             
-            let action_greedy = get_greedy_action_at_state( & policy_values, & state_episode );
-            e_greedy_select( criteria._e, possible_actions.as_slice(), & action_greedy )
+            match criteria._policy_select_method {
+                PolicySelectMethod::EpsilonGreedy( epsilon ) => {
+                    let action_greedy = policy::get_greedy_action_at_state( & policy_values, & state_episode );
+                    policy::e_greedy_select( epsilon, possible_actions.as_slice(), & action_greedy )
+                },
+                PolicySelectMethod::Softmax => {
+                    //obtain policy values for currently available actions at current state
+                    let mut vals = softmax::Distr(vec![]);
+                    for (_k,i) in possible_actions.iter().enumerate() {
+                        let val = match policy_values.get( &( state_init.clone(), i.clone() ) ) {
+                            Some( x ) => *x,
+                            None => 0.,
+                        };
+                        vals.0.push(val);
+                    }
+                    policy::softmax_select( possible_actions.as_slice(), & vals )
+                },
+            }
         };
 
         loop { //per step in episode
             if g.is_state_terminal( & state_episode ) {
-                // println!( "terminal state detected");
                 break;
             }
 
@@ -166,10 +147,29 @@ pub fn search< G, State, Action >( criteria: & SearchCriteria,
             //choose action using e-greedy policy selection
             let action_next : Action = {
                 let possible_actions = g.gen_possible_actions( & state_next );
-                // println!( "possible_acitons: {:?}", possible_actions );
-                let action_greedy = get_greedy_action_at_state( & policy_values, & state_next );
-                e_greedy_select( criteria._e, possible_actions.as_slice(), & action_greedy )
+
+                match criteria._policy_select_method {
+                    PolicySelectMethod::EpsilonGreedy( epsilon ) => {
+                        let action_greedy = policy::get_greedy_action_at_state( & policy_values, & state_next );
+                        policy::e_greedy_select( epsilon, possible_actions.as_slice(), & action_greedy )
+                    },
+                    PolicySelectMethod::Softmax => {
+                        //obtain policy values for currently available actions at current state
+                        let mut vals = softmax::Distr(vec![]);
+                        for (_k,i) in possible_actions.iter().enumerate() {
+                            // let val = policy_values.get( &( state_next.clone(), i.clone() ) ).unwrap_or( &0. );
+                            // vals.0.push(*val);
+                            let val = match policy_values.get( &( state_next.clone(), i.clone() ) ) {
+                                Some( x ) => *x,
+                                None => 0.,
+                            };
+                            vals.0.push(val);
+                        }
+                        policy::softmax_select( possible_actions.as_slice(), & vals )
+                    },
+                }
             };
+
             let td_error = {
                     
                 let q_next = policy_values.get( &( state_next.clone(), action_next.clone() ) ).unwrap_or(&0.);
@@ -188,7 +188,7 @@ pub fn search< G, State, Action >( criteria: & SearchCriteria,
             let mut items_in_path = HashSet::new();
             let mut items_in_loops = HashSet::new();
             let trace = g.get_state_history();
-
+            
             for i in 0..trace.len() {
                 let t =  & trace[i];
                 let exists = match loop_detector.get( t ) {
@@ -255,7 +255,6 @@ pub fn search< G, State, Action >( criteria: & SearchCriteria,
                 StopCondition::TimeMicro(t) => {
                     let t_delta = t1.signed_duration_since(t0).num_microseconds().unwrap() as f64;
                     if t_delta >= t {
-                        // println!("end condition");
                         break 'outer_loop;
                     }
                 },
@@ -268,13 +267,11 @@ pub fn search< G, State, Action >( criteria: & SearchCriteria,
             StopCondition::TimeMicro(t) => {
                 let t_delta = t1.signed_duration_since(t0).num_microseconds().unwrap() as f64;
                 if t_delta >= t {
-                    // println!("end condition");
                     break;
                 }
             },
             StopCondition::EpisodeIter(n) => {
                 if iter >= n {
-                    // println!("end condition");
                     break;
                 }
             },

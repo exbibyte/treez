@@ -143,6 +143,10 @@ assert_eq!( t.get_interval_start( 11 ), 19isize );
 
 ```rust
 
+use self::treez::sarsa;
+use std::f64;
+
+//define and implement interfaces to application specific logic
 pub struct GameGridWorld {
     _dim: ( usize, usize ),
     _start: ( usize, usize ),
@@ -239,8 +243,7 @@ impl sarsa::Game< State, Action > for GameGridWorld {
     }
 }
 
-#[test]
-fn sarsa_grid_world() {
+fn main() {
 
     //initialize game world
     let mut game = GameGridWorld {
@@ -251,17 +254,21 @@ fn sarsa_grid_world() {
         _play_path: vec![],
     };
     
-    
+
+    //setup search criteria and run
     let sc = sarsa::SearchCriteria {
         _lambda: 0.99,
         _gamma: 0.9,
-        _e: 0.4,
         _alpha: 0.03,
-        //        _stop_limit: sarsa::StopCondition::EpisodeIter(100), //number of episodes
-        _stop_limit: sarsa::StopCondition::TimeMicro(10_000_000.0), //time allotted to search
+        // _stop_limit: sarsa::StopCondition::EpisodeIter(100), //number of episodes
+        _stop_limit: sarsa::StopCondition::TimeMicro( 10_000_000.0 ), //time allotted to search
+        // _policy_select_method: sarsa::PolicySelectMethod::EpsilonGreedy( 0.4 ),
+        _policy_select_method: sarsa::PolicySelectMethod::Softmax,
     };
 
     let ( _policy_map, policy_normalized, expectation ) = sarsa::search( & sc, & mut game ).unwrap();
+
+    //display results
 
     for i in (0..game._dim.1).rev() {
         let mut v = vec![];
@@ -272,7 +279,7 @@ fn sarsa_grid_world() {
             };
             let best = actions_percentage.iter().
                 fold( (Action::NONE, f64::MIN), |accum, x| if x.1 > accum.1 { x.clone() } else { accum } );
-            
+
             let a_text = {
                 if (j,i) == game._end {
                     '🏁'

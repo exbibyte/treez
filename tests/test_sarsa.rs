@@ -115,10 +115,11 @@ fn sarsa_grid_world() {
     let sc = sarsa::SearchCriteria {
         _lambda: 0.99,
         _gamma: 0.9,
-        _e: 0.4,
         _alpha: 0.03,
-        //        _stop_limit: sarsa::StopCondition::EpisodeIter(100), //number of episodes
-        _stop_limit: sarsa::StopCondition::TimeMicro(10_000_000.0), //time allotted to search
+        // _stop_limit: sarsa::StopCondition::EpisodeIter(100), //number of episodes
+        _stop_limit: sarsa::StopCondition::TimeMicro( 10_000_000.0 ), //time allotted to search
+        // _policy_select_method: sarsa::PolicySelectMethod::EpsilonGreedy( 0.4 ),
+        _policy_select_method: sarsa::PolicySelectMethod::Softmax,
     };
 
     let ( _policy_map, policy_normalized, expectation ) = sarsa::search( & sc, & mut game ).unwrap();
