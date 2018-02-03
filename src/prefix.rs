@@ -1,37 +1,40 @@
 use std::mem;
+use std::ops::Add;
+use std::ops::Sub;
 
-pub struct TreePrefix {
-    _buf: Vec<isize>,
+pub struct TreePrefix < V > where V: Add< Output = V > + Sub< Output = V > + Default + Clone {
+    _buf: Vec< V >,
 }
 
-impl TreePrefix {
-    pub fn init( num: usize ) -> TreePrefix {
+impl < V > TreePrefix < V > where V: Add< Output = V > + Sub< Output = V > + Default + Clone {
+    pub fn init( num: usize ) -> TreePrefix< V > {
         TreePrefix {
-            _buf: vec![ 0isize; num + 1]
+            _buf: vec![ Default::default(); num + 1]
         }
     }
-    pub fn add( & mut self, index: usize, val: isize ){
+    pub fn add( & mut self, index: usize, val: V ){
         assert!( index < self._buf.len() );
         let mut i = index;
         while i < self._buf.len() {
-            self._buf[i] += val;
+            let v = self._buf[i].clone();
+            self._buf[i] = v + val.clone();
             i += self.lsb(i+1);
         }
     }
-    pub fn set( & mut self, index: usize, val: isize ){
+    pub fn set( & mut self, index: usize, val: V ){
         assert!( index < self._buf.len() );
         let v = self.get( index );
         self.add( index, val - v );
     }
-    pub fn get( & self, index: usize ) -> isize {
+    pub fn get( & self, index: usize ) -> V {
         assert!( index < self._buf.len() );
         self.get_interval( index, index + 1 )
     }
-    pub fn get_interval( & self, index: usize, index_end: usize ) -> isize {
+    pub fn get_interval( & self, index: usize, index_end: usize ) -> V {
         assert!( index < self._buf.len() );
         assert!( index_end < self._buf.len() );
 
-        let mut s = 0isize;
+        let mut s = Default::default();
         let mut i = index_end;
         let mut j = index;
         if j > i {
@@ -39,22 +42,22 @@ impl TreePrefix {
         }
         while i > j {
             // println!("i:{}", i );
-            s += self._buf[i-1];
-            i -= self.lsb(i);
+            s = s + self._buf[i-1].clone();
+            i = i - self.lsb(i);
         }
         while j > i {
             // println!("j:{}", j );
-            s -= self._buf[j-1];
-            j -= self.lsb(j);
+            s = s - self._buf[j-1].clone();
+            j = j - self.lsb(j);
         }
         s
     }
-    pub fn get_interval_start( & self, index: usize ) -> isize {
+    pub fn get_interval_start( & self, index: usize ) -> V {
         let mut i = index;
-        let mut s = 0isize;
+        let mut s = Default::default();
         while i > 0 {
-            s += self._buf[i-1];
-            i -= self.lsb(i);
+            s = s + self._buf[i-1].clone();
+            i = i - self.lsb(i);
         }
         s
     }

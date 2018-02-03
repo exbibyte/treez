@@ -1,50 +1,48 @@
+extern crate num;
+
+use std::hash::Hash;
 use std::collections::BTreeSet;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 // use std::cmp;
 
-struct Node {
-    _index: i64,
-    _parent: i64,
-    _child_left: i64,
-    _child_right: i64,
-    // _num_children: usize,
-    _segs: Vec<i32>,
-    // _height: usize,
-    _bound_l: i32, //todo: use generic types?
-    _bound_r: i32,
+struct Node< T, V > where T : Ord + Default + Clone, V: Clone + Hash + Eq {
+    _index: isize,
+    _parent: isize,
+    _child_left: isize,
+    _child_right: isize,
+    _segs: Vec< V >,
+    _bound_l: T, //todo: use generic types?
+    _bound_r: T,
 }
 
 
-impl Default for Node {
-    fn default() -> Node {
+impl < T, V > Default for Node< T, V > where T: Ord + Default + Clone, V: Clone + Hash + Eq {
+    fn default() -> Node < T, V > {
         Node {
-            _index: -1i64,
-            _parent: -1i64,
-            _child_left: -1i64,
-            _child_right: -1i64,
-            // _num_children: 0usize,
+            _index: -1isize,
+            _parent: -1isize,
+            _child_left: -1isize,
+            _child_right: -1isize,
             _segs: vec![],
-            // _height: 0usize,
-            _bound_l: 0i32,
-            _bound_r: 0i32,
+            _bound_l: Default::default(),
+            _bound_r: Default::default(),
         }
     }
 }
 
-pub struct TreeSeg {
-    _intervals: Vec<Node>,
-    _root_index: i64,
-    // _height: usize,
+pub struct TreeSeg < T, V > where T : Ord + Default + Clone, V: Clone + Hash + Eq {
+    _intervals: Vec< Node< T, V > >,
+    _root_index: isize,
 }
 
-impl TreeSeg {
+impl < T, V > TreeSeg< T, V > where T: Ord + Default + Clone, V: Clone + Hash + Eq {
     ///builds a tree using input segments
-    pub fn init( input: &[(i32,i32,i32)] ) -> TreeSeg {
+    pub fn init( input: &[( T, T, V )] ) -> TreeSeg< T, V > {
         let mut intervals = BTreeSet::new();
         for i in input {
-            intervals.insert( i.0 );
-            intervals.insert( i.1 );
+            intervals.insert( i.0.clone() );
+            intervals.insert( i.1.clone() );
         }
         let mut buf = vec![];
         let mut queue = VecDeque::new();
@@ -52,9 +50,9 @@ impl TreeSeg {
         for i in &intervals {
             let n_index = buf.len();
             let n = Node {
-                _index: n_index as i64,
-                _bound_l: *i,
-                _bound_r: *i,
+                _index: n_index as isize,
+                _bound_l: (*i).clone(),
+                _bound_r: (*i).clone(),
                 ..Default::default()
             };
             // println!( "elementary intervals created: [{},{}]", n._bound_l, n._bound_r );
@@ -72,13 +70,13 @@ impl TreeSeg {
                     // println!("left: {}", (buf.len()-1) );
                     // println!("right: {}", drained[nr] );
                     let n = Node {
-                        _index: n_index as i64,
-                        _child_left: (buf.len()-1) as i64,
-                        _child_right: drained[nr] as i64,
+                        _index: n_index as isize,
+                        _child_left: (buf.len()-1) as isize,
+                        _child_right: drained[nr] as isize,
                         // _num_children: buf[buf.len()-1]._num_children + buf[drained[nr]]._num_children + 2,
                         // _height: cmp::max( buf[buf.len()-1]._height, buf[drained[nr]]._height ) + 1,
-                        _bound_l: buf[buf.len()-1]._bound_l,
-                        _bound_r: buf[drained[nr]]._bound_r,
+                        _bound_l: buf[buf.len()-1]._bound_l.clone(),
+                        _bound_r: buf[drained[nr]]._bound_r.clone(),
                         ..Default::default()
                     };
                     // println!( "bound created: [{},{}]", n._bound_l, n._bound_r );
@@ -89,16 +87,16 @@ impl TreeSeg {
                     let nr = i*2+1;
                     // println!("left: {}", drained[nl] );
                     // println!("right: {}", drained[nr] );
-                    buf[drained[nl]]._parent = n_index as i64;
-                    buf[drained[nr]]._parent = n_index as i64;
+                    buf[drained[nl]]._parent = n_index as isize;
+                    buf[drained[nr]]._parent = n_index as isize;
                     let n = Node {
-                        _index: n_index as i64,
-                        _child_left: drained[nl] as i64,
-                        _child_right: drained[nr] as i64,
+                        _index: n_index as isize,
+                        _child_left: drained[nl] as isize,
+                        _child_right: drained[nr] as isize,
                         // _num_children: buf[drained[nl]]._num_children + buf[drained[nr]]._num_children + 2,
                         // _height: cmp::max( buf[drained[nl]]._height, buf[drained[nr]]._height ) + 1,
-                        _bound_l: buf[drained[nl]]._bound_l,
-                        _bound_r: buf[drained[nr]]._bound_r,
+                        _bound_l: buf[drained[nl]]._bound_l.clone(),
+                        _bound_r: buf[drained[nr]]._bound_r.clone(),
                         ..Default::default()
                     };
                     // println!( "bound created: [{},{}]", n._bound_l, n._bound_r );
@@ -111,22 +109,22 @@ impl TreeSeg {
         let buf_size = buf.len();
         let mut t = TreeSeg {
             _intervals: buf,
-            _root_index: if buf_size > 0 { (buf_size-1) as i64 } else { -1i64 },
+            _root_index: if buf_size > 0 { (buf_size-1) as isize } else { -1isize },
         };
         
         //insert segments into the tree
         for i in input {
             let mut q = vec![];
             q.push( t._root_index );
-            let left = i.0;
-            let right = i.1;
-            let id = i.2;
+            let left = i.0.clone();
+            let right = i.1.clone();
+            let id = i.2.clone();
             while q.len() > 0 {
                 let index = q.pop().unwrap();
                 if index != -1 {
                     let n = index as usize;
                     if left <= t._intervals[n]._bound_l && right >= t._intervals[n]._bound_r {
-                        t._intervals[n]._segs.push( id );
+                        t._intervals[n]._segs.push( id.clone() );
                     } else if left > t._intervals[n]._bound_r || right < t._intervals[n]._bound_l {
                         //do nothing
                     } else {
@@ -144,7 +142,7 @@ impl TreeSeg {
         self._intervals.len()
     }
     ///get a list of segments that is contained in the bound
-    pub fn get_segs_from_bound( & self, bound: (i32,i32) ) -> Vec<i32> {
+    pub fn get_segs_from_bound( & self, bound: ( T, T) ) -> Vec< V > {
         let l = bound.0;
         let r = bound.1;
         let mut hs = HashSet::new();

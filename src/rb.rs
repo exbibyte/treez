@@ -1,6 +1,11 @@
 ///array based red black tree implementation
+
+extern crate num;
+
 use std::isize;
 use std::collections::HashMap;
+
+use self::num::Bounded;
 
 #[allow(dead_code)]
 #[derive(Debug,Copy,Clone)]
@@ -10,40 +15,40 @@ enum Colour {
 }
 ///internal tree node
 #[derive(Debug,Copy,Clone)]
-struct Node {
-    _key: isize,
+struct Node < K, V > where K: Ord + Default + Bounded + Clone, V : Default + Clone {
+    _key: K,
     _colour: Colour,
     _parent: isize,
     _child_l: isize,
     _child_r: isize,
-    _val: isize,
+    _val: V,
     _index: isize,
 }
 
-impl Default for Node {
-    fn default() -> Node {
+impl < K, V > Default for Node< K, V > where K: Ord + Default + Bounded + Clone, V : Default + Clone {
+    fn default() -> Node< K, V > {
         Node {
-            _key: 0isize,
+            _key: Default::default(),
             _colour: Colour::Red,
             _parent: -1isize,
             _child_l: -1isize,
             _child_r: -1isize,
-            _val: 0isize,
+            _val: Default::default(),
             _index: -1isize,
         }
     }
 }
 ///vector indexed red-black tree implementation
-pub struct TreeRb {
+pub struct TreeRb< K, V > where K: Ord + Default + Bounded + Clone, V : Default + Clone {
     _root: isize,
-    _buf: Vec<Node>,
-    _sentinil: Node,
+    _buf: Vec< Node< K, V > >,
+    _sentinil: Node< K, V >,
     _freelist: Vec<isize>,
     _leaf_remove_index: isize, //dummy leaf for fixup operation
 }
 
-impl TreeRb {
-    pub fn new() -> TreeRb {
+impl < K, V > TreeRb< K, V > where K: Ord + Default + Bounded + Clone, V : Default + Clone {
+    pub fn new() -> TreeRb< K, V > {
         TreeRb {
             _root: -1isize,
             _buf: vec![],
@@ -65,7 +70,7 @@ impl TreeRb {
     pub fn is_empty( & self ) -> bool {
         self._buf.len() - self._freelist.len() == 0
     }
-    pub fn insert( & mut self, key: isize, val: isize ) -> Option<isize> {
+    pub fn insert( & mut self, key: K, val: V ) -> Option< V > {
         let mut x = self._root;
         let mut prev = -1isize;
         while x != -1 {
@@ -76,14 +81,14 @@ impl TreeRb {
                 x = self._buf[x as usize]._child_r;
             } else {
                 //found equal key, then replace existing val of the node, no need to fixup
-                let val_prev = self._buf[prev as usize]._val;
+                let val_prev = self._buf[prev as usize]._val.clone();
                 self._buf[prev as usize]._val = val;
                 return Some( val_prev )
             }
         }
         let n_index = self._buf.len();
         let n = Node  {
-            _key: key,
+            _key: key.clone(),
             _colour: Colour::Red,
             _parent: prev,
             _val: val,
@@ -108,9 +113,9 @@ impl TreeRb {
         }
     }
     ///returns the value of the removed item, otherwise return None
-    pub fn remove( & mut self, key: & isize ) -> Option<isize> {
+    pub fn remove( & mut self, key: & K ) -> Option< V > {
         if let Some(z) = self.get_index( key ) {
-            let val = self.get_node(z)._val;
+            let val = self.get_node(z)._val.clone();
             // println!("remove node {}, val {}", z, val );
             #[allow(unused_assignments)]
             let mut x = -1;
@@ -122,7 +127,7 @@ impl TreeRb {
             //create a special leaf node to handle edge case during fixup if necessary
             self._leaf_remove_index = self._buf.len() as isize;
             let mut leaf_dummy = Node {
-                _key: isize::MAX,
+                _key: Bounded::max_value(),
                 _colour: Colour::Black,
                 _index: self._leaf_remove_index,
                 ..Default::default()
@@ -261,19 +266,19 @@ impl TreeRb {
                 self.compact();
             }
 
-            Some( val )
+            Some( val.clone() )
         } else {
             None
         }
     }
     ///check to see if an item with the input key exists
-    pub fn contains_key( & self, key: isize ) -> bool {
+    pub fn contains_key( & self, key: K ) -> bool {
         let mut x = self._root;
         while x != -1 {
-            let k = self._buf[x as usize]._key;
-            if key == k {
+            let k = & self._buf[x as usize]._key;
+            if &key == k {
                 return true
-            } else if key < k {
+            } else if &key < k {
                 x = self._buf[x as usize]._child_l;
             } else {
                 x = self._buf[x as usize]._child_r;
@@ -282,13 +287,13 @@ impl TreeRb {
         false
     }
     ///get the value of the item with the input key, otherwise return None
-    pub fn get( & self, key: isize ) -> Option<isize> {
+    pub fn get( & self, key: K ) -> Option< V > {
         let mut x = self._root;
         while x != -1 {
-            let k = self._buf[x as usize]._key;
-            if key == k {
-                return Some( self._buf[x as usize]._val )
-            } else if key < k {
+            let k = & self._buf[x as usize]._key;
+            if &key == k {
+                return Some( self._buf[x as usize]._val.clone() )
+            } else if &key < k {
                 x = self._buf[x as usize]._child_l;
             } else {
                 x = self._buf[x as usize]._child_r;
@@ -297,14 +302,14 @@ impl TreeRb {
         None
     }
     ///get the index of the node with the input key, otherwise return None
-    fn get_index( & self, key: & isize ) -> Option<isize> {
+    fn get_index( & self, key: & K ) -> Option< isize > {
         let mut x = self._root;
         // println!("get_index root index: {}", x);
         while x != -1 {
-            let k = self._buf[x as usize]._key;
-            if *key == k {
+            let k = & self._buf[x as usize]._key;
+            if key == k {
                 return Some( x )
-            } else if *key < k {
+            } else if key < k {
                 x = self._buf[x as usize]._child_l;
             } else {
                 x = self._buf[x as usize]._child_r;
@@ -540,7 +545,7 @@ impl TreeRb {
         }
         self.get_node_mut(x)._colour = Colour::Black;
     }
-    fn get_node( & mut self, node: isize ) -> &Node {        
+    fn get_node( & mut self, node: isize ) -> &Node< K, V > {        
         // println!( "get_node index: {}, buf len: {}", node, self._buf.len() );
         assert!( node >= -1 && node < self._buf.len() as isize );
         if node == -1 {
@@ -551,7 +556,7 @@ impl TreeRb {
             &self._buf[ node as usize ]
         }
     }
-    fn get_node_mut( & mut self, node: isize ) -> & mut Node {
+    fn get_node_mut( & mut self, node: isize ) -> & mut Node< K, V > {
         assert!( node >= -1 && node < self._buf.len() as isize );
         if node == -1 {
             & mut self._sentinil
@@ -747,7 +752,7 @@ impl TreeRb {
             let f_index = self._freelist[f];
             // println!("compacting {} to {}", n-1, f_index);
             // println!("compacting node parent index: {}", n_p);
-            self._buf[ f_index as usize ] = self._buf[ n -1 ];
+            self._buf[ f_index as usize ] = self._buf[ n -1 ].clone();
             self._buf[ f_index as usize ]._index = f_index;
             self.connect_left( f_index, n_l );
             self.connect_right( f_index, n_r );
@@ -777,7 +782,7 @@ impl TreeRb {
         while v.len() > 0 {
             let n = v.pop().unwrap();
             if n != -1 {
-                println!("{:?}", self.get_node(n) );
+                // println!("{:?}", self.get_node(n) );
                 v.push( self.get_node(n)._child_l );
                 v.push( self.get_node(n)._child_r );
             }
