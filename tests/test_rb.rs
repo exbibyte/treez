@@ -1,6 +1,7 @@
 extern crate treez;
 extern crate rand;
 extern crate chrono;
+extern crate num;
 
 use self::chrono::prelude::*;
 use std::collections::HashMap;
@@ -10,7 +11,7 @@ use std::collections::BTreeMap;
 
 #[test]
 fn insert() {
-    let mut t : treez::rb::TreeRb = treez::rb::TreeRb::new();
+    let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
     for i in 0..10 {
         t.insert( i, i );
     }
@@ -19,7 +20,7 @@ fn insert() {
 #[test]
 fn contains_key() {
     {
-        let mut t : treez::rb::TreeRb = treez::rb::TreeRb::new();
+        let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
         for i in 0..10 {
             t.insert( i, i );
         }
@@ -31,7 +32,7 @@ fn contains_key() {
         }
     }
     {
-        let mut t : treez::rb::TreeRb = treez::rb::TreeRb::new();
+        let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
         for i in (0..10).rev() {
             t.insert( i, i );
         }
@@ -45,7 +46,7 @@ fn contains_key() {
 }
 #[test]
 fn get() {
-    let mut t : treez::rb::TreeRb = treez::rb::TreeRb::new();
+    let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
     for i in 0..10 {
         t.insert( i, i );
     }
@@ -62,7 +63,7 @@ fn get() {
 }
 #[test]
 fn len() {
-    let mut t : treez::rb::TreeRb = treez::rb::TreeRb::new();
+    let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
     assert!( t.len() == 0 );
     assert!( t.is_empty() );
     for i in 0..10 {
@@ -73,7 +74,7 @@ fn len() {
 }
 #[test]
 fn clear() {
-    let mut t : treez::rb::TreeRb = treez::rb::TreeRb::new();
+    let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
     for i in 0..10 {
         t.insert( i, i );
     }
@@ -83,7 +84,7 @@ fn clear() {
 }
 #[test]
 fn remove_compact() {
-    let mut t : treez::rb::TreeRb = treez::rb::TreeRb::new();
+    let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
     for i in 0..3 {
         t.insert( i, i );
     }
@@ -101,7 +102,7 @@ fn remove_compact() {
 }
 #[test]
 fn remove_leaf_black() {
-    let mut t : treez::rb::TreeRb = treez::rb::TreeRb::new();
+    let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
     for i in 0..10 {
         t.insert( i, i );
     }
@@ -122,7 +123,7 @@ fn remove_leaf_black() {
 
 #[test]
 fn remove_leaf_red() {
-    let mut t : treez::rb::TreeRb = treez::rb::TreeRb::new();
+    let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
     for i in 0..10 {
         t.insert( i, i );
     }
@@ -143,7 +144,7 @@ fn remove_leaf_red() {
 
 #[test]
 fn remove_internal_red() {
-    let mut t : treez::rb::TreeRb = treez::rb::TreeRb::new();
+    let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
     for i in 0..10 {
         t.insert( i, i );
     }
@@ -164,7 +165,7 @@ fn remove_internal_red() {
 
 #[test]
 fn remove_internal_black() {
-    let mut t : treez::rb::TreeRb = treez::rb::TreeRb::new();
+    let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
     for i in 0..10 {
         t.insert( i, i );
     }
@@ -185,7 +186,7 @@ fn remove_internal_black() {
 
 #[test]
 fn remove_internal_black_2() {
-    let mut t : treez::rb::TreeRb = treez::rb::TreeRb::new();
+    let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
     for i in 0..10 {
         t.insert( i, i );
     }
@@ -206,7 +207,7 @@ fn remove_internal_black_2() {
 
 #[test]
 fn insert_remove_rand() {
-    let mut t : treez::rb::TreeRb = treez::rb::TreeRb::new();
+    let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
 
     let bounds = Range::new( -300, 300 );
     let mut rng = rand::thread_rng();
@@ -263,7 +264,7 @@ fn perf(){
 
         let t0 = Local::now();
 
-        let mut t = treez::rb::TreeRb::new();
+        let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
         for i in 0..nums.len() {
             let r = nums[i];
             t.insert( r, i as isize );

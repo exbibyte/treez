@@ -4,7 +4,7 @@ extern crate treez;
 
 #[test]
 fn prefix() {
-    let mut t = treez::prefix::TreePrefix::init(16);
+    let mut t : treez::prefix::TreePrefix< isize > = treez::prefix::TreePrefix::init(16);
     assert_eq!( t.get_interval(0, 15), 0isize );
     t.set(0, 5);
     assert_eq!( t.get_interval(0, 16), 5isize );

@@ -20,7 +20,7 @@ for i in 0..10 {
     segments.push( n );
 }
 
-let t : treez::seg::TreeSeg = treez::seg::TreeSeg::init( segments.as_slice() );
+let t : treez::seg::TreeSeg< i32, i32 > = treez::seg::TreeSeg::init( segments.as_slice() );
 let query_segs: HashSet<_> = t.get_segs_from_bound( (15,20) ).iter().cloned().collect();
 
 let check: HashSet<_> = [ 2, 3, 4 ].iter().cloned().collect();
@@ -38,7 +38,8 @@ assert!( check.intersection(&query_segs).count() == check.len() );
 
 ```rust
 
-let mut t = treez::rb::TreeRb::new();
+
+let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
 for i in 0..nums.len() {
     let r = nums[i];
     t.insert( r, i as isize );
@@ -120,7 +121,7 @@ for i in [ "x", "y", "z", "a", "b" ].iter().zip( var_ids ) {
 
 ```rust
 
-let mut t = treez::prefix::TreePrefix::init(16);
+let mut t = treez::prefix::TreePrefix< isize >::init(16);
 t.set(0, 5);
 t.set(1, 7);
 t.set(10, 4);

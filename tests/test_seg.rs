@@ -10,7 +10,7 @@ fn init() {
         let n = (i*5, 5*i+5, i);
         segments.push( n );
     }
-    let t : treez::seg::TreeSeg = treez::seg::TreeSeg::init( segments.as_slice() );
+    let t : treez::seg::TreeSeg< i32, i32 > = treez::seg::TreeSeg::init( segments.as_slice() );
     assert!( t.len_nodes() == 21 );
 
     {
