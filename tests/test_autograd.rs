@@ -7,19 +7,19 @@ use self::treez::autograd;
 #[test]
 fn autograd() {
 
-    let mut c : autograd::Context = Default::default();
+    let mut c: autograd::Context = Default::default();
 
     //setup variables
-    let mut buf = {
-        let mut x = autograd::init_var( & mut c, &[6f64, 5f64] );
-        let mut y = autograd::init_var( & mut c, &[7f64, 3f64] );
-        let mut z = autograd::init_op( & mut c, autograd::OpType::Mul, & mut [ & mut x, & mut y ] );
-        let mut a = autograd::init_var( & mut c, &[3f64, 8f64] );
-        let mut b = autograd::init_op( & mut c, autograd::OpType::Add, & mut [ & mut z, & mut a ] );
+    let buf = {
+        let mut x = c.init_var( &[6f64, 5f64] );
+        let mut y = c.init_var( &[7f64, 3f64] );
+        let mut z = c.init_op( autograd::OpType::Mul, & mut [ & mut x, & mut y ] );
+        let mut a = c.init_var( &[3f64, 8f64] );
+        let mut b = c.init_op( autograd::OpType::Add, & mut [ & mut z, & mut a ] );
         vec![ x, y, z, a, b ]
     };
 
-    let var_ids = autograd::fwd_pass( & mut c, & mut buf ).unwrap();
+    let var_ids = c.fwd_pass( buf ).unwrap();
     
     let mut var_map = HashMap::new();
     for i in [ "x", "y", "z", "a", "b" ].iter().zip( var_ids ) {
@@ -32,7 +32,7 @@ fn autograd() {
 
         let b_id = *var_map.get(&"b").unwrap();
         for i in var_map.iter() {
-            let grad = autograd::compute_grad( & mut c, b_id, *i.1 ).unwrap();
+            let grad = c.compute_grad( b_id, *i.1 ).unwrap();
             var_grad.insert( *i.0, grad );
         }
 
@@ -54,7 +54,7 @@ fn autograd() {
     {
         let z_id = *var_map.get(&"z").unwrap();
         let a_id = *var_map.get(&"a").unwrap();
-        let grad = autograd::compute_grad( & mut c, z_id, a_id ).unwrap();
+        let grad = c.compute_grad( z_id, a_id ).unwrap();
         assert_eq!( &grad[..], &[ 0f64, 0f64 ] );
     }
 }
@@ -66,16 +66,16 @@ fn autograd_scalar_vector_op() {
     let mut c : autograd::Context = Default::default();
 
     //setup variables
-    let mut buf = {
-        let mut x = autograd::init_var( & mut c, &[ 6f64 ] );
-        let mut y = autograd::init_var( & mut c, &[ 7f64, 3f64 ] );
-        let mut z = autograd::init_op( & mut c, autograd::OpType::Mul, & mut [ & mut x, & mut y ] );
-        let mut a = autograd::init_var( & mut c, &[ 3f64, 8f64 ] );
-        let mut b = autograd::init_op( & mut c, autograd::OpType::Add, & mut [ & mut z, & mut a ] );
+    let buf = {
+        let mut x = c.init_var( &[ 6f64 ] );
+        let mut y = c.init_var( &[ 7f64, 3f64 ] );
+        let mut z = c.init_op( autograd::OpType::Mul, & mut [ & mut x, & mut y ] );
+        let mut a = c.init_var( &[ 3f64, 8f64 ] );
+        let mut b = c.init_op( autograd::OpType::Add, & mut [ & mut z, & mut a ] );
         vec![ x, y, z, a, b ]
     };
 
-    let var_ids = autograd::fwd_pass( & mut c, & mut buf ).unwrap();
+    let var_ids = c.fwd_pass( buf ).unwrap(); //returns ids for input ops and vars
     
     let mut var_map = HashMap::new();
     for i in [ "x", "y", "z", "a", "b" ].iter().zip( var_ids ) {
@@ -88,7 +88,7 @@ fn autograd_scalar_vector_op() {
 
         let b_id = *var_map.get(&"b").unwrap();
         for i in var_map.iter() {
-            let grad = autograd::compute_grad( & mut c, b_id, *i.1 ).unwrap();
+            let grad = c.compute_grad( b_id, *i.1 ).unwrap();
             var_grad.insert( *i.0, grad );
         }
 
@@ -114,7 +114,7 @@ fn autograd_scalar_vector_op() {
     {
         let z_id = *var_map.get(&"z").unwrap();
         let a_id = *var_map.get(&"a").unwrap();
-        let grad = autograd::compute_grad( & mut c, z_id, a_id ).unwrap();
+        let grad = c.compute_grad( z_id, a_id ).unwrap();
         assert_eq!( &grad[..], &[ 0f64, 0f64 ] );
     }
 }

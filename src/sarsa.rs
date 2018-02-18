@@ -1,7 +1,6 @@
-///Implementation of model-free SARSA 
+///Implementation of sarsa Q-learning
 ///using eligibility trace update with replacement update,
-///specializable to full rollout, TD(0), or in between.
-///Current policy selection choices are e-greedy or softmax.
+///rollout factor, e-greedy or softmax policy selection
 
 extern crate chrono;
 extern crate rand;
