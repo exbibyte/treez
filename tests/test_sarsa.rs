@@ -3,6 +3,7 @@ extern crate treez;
 use self::treez::sarsa;
 use std::f64;
 
+#[derive(Clone)]
 pub struct GameGridWorld {
     _dim: ( usize, usize ),
     _start: ( usize, usize ),
@@ -116,13 +117,13 @@ fn sarsa_grid_world() {
         _lambda: 0.99,
         _gamma: 0.9,
         _alpha: 0.03,
-        // _stop_limit: sarsa::StopCondition::EpisodeIter(100), //number of episodes
-        _stop_limit: sarsa::StopCondition::TimeMicro( 10_000_000.0 ), //time allotted to search
+        _stop_limit: sarsa::StopCondition::EpisodeIter(20), //number of episodes
+        // _stop_limit: sarsa::StopCondition::TimeMicro( 1_000_000.0 ), //time allotted to search
         // _policy_select_method: sarsa::PolicySelectMethod::EpsilonGreedy( 0.4 ),
         _policy_select_method: sarsa::PolicySelectMethod::Softmax,
     };
 
-    let ( _policy_map, policy_normalized, expectation ) = sarsa::search( & sc, & mut game ).unwrap();
+    let ( _policy_map, policy_normalized, expectation, iter ) = sarsa::search( & sc, & mut game ).unwrap();
 
     for i in (0..game._dim.1).rev() {
         let mut v = vec![];
@@ -181,4 +182,6 @@ fn sarsa_grid_world() {
         }
         print!( "\n" );
     }
+
+    println!( "iterations: {}", iter );
 }

@@ -141,9 +141,9 @@ assert_eq!( t.get_interval_start( 11 ), 19isize );
 ```
 
 ### sarsa policy search
-#### implementation: using eligibility trace, configurable reward decay and rollout factors, Q-learning based
+#### implementation: using eligibility trace, configurable reward decay and rollout factors, Q-learning based, basic thread parallel implementation
 #### notes: This is an implementation attempt based on readings from various sources such as Reinforcement Learning by Sutton et al.
-#### todo: parallel search, optimization
+#### todo: switch to fine grained parallelism
 
 ```rust
 
@@ -151,6 +151,7 @@ use self::treez::sarsa;
 use std::f64;
 
 //define and implement interfaces to application specific logic
+#[derive(Clone)]
 pub struct GameGridWorld {
     _dim: ( usize, usize ),
     _start: ( usize, usize ),
@@ -270,7 +271,7 @@ fn main() {
         _policy_select_method: sarsa::PolicySelectMethod::Softmax,
     };
 
-    let ( _policy_map, policy_normalized, expectation ) = sarsa::search( & sc, & mut game ).unwrap();
+    let ( _policy_map, policy_normalized, expectation, iter ) = sarsa::search( & sc, & mut game ).unwrap();
 
     //display results
 
