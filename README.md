@@ -4,9 +4,7 @@
 
 current implementations: segment tree, rb tree, reverse auto gradient differentiator, indexed tree, sarsa Q-Learning
 
-work in progress: variants of mcts-related search, autograd vectorization
-
-note: this is work in progress and interfaces may change from version to version
+current work in progress: autograd and neural network
 
 ### segment tree  
 #### implementation: array based
@@ -33,9 +31,9 @@ assert!( check.intersection(&query_segs).count() == check.len() );
 ```
 
 ### red black tree  
-#### implementation: array based, threshold compaction, minimal heap allocation
+#### implementation: array based, threshold compaction, minimal heap allocation  
 
-#### todo: optimize internal representation and operations
+#### todo: optimize internal representation and operations  
 
 #### notes: comparable performance to BTreeMap  
 
@@ -56,7 +54,7 @@ for i in 0..nums.len() {
 ```
 	 
 ### reverse automatic gradient differentiation
-#### implementation: computes the gradient dy/dxi from reverse computation graph and caches results for computed dy/dxi where xi preceeds y in the forward computation graph
+#### implementation: computes the gradient dy/dxi from reverse computation graph and caches results for computed dy/dxi where xi preceeds y in the forward computation graph  
 
 #### todo: add more test coverage, tweek to more ergonomic interface, optimization and parallelism
 
@@ -141,8 +139,10 @@ assert_eq!( t.get_interval_start( 11 ), 19isize );
 ```
 
 ### sarsa policy search
-#### implementation: using eligibility trace, configurable reward decay and rollout factors, Q-learning based, basic thread parallel implementation
+#### implementation: using eligibility trace, configurable reward decay and rollout factors, Q-learning based, basic thread parallel implementation  
+
 #### notes: This is an implementation attempt based on readings from various sources such as Reinforcement Learning by Sutton et al.
+
 #### todo: switch to fine grained parallelism
 
 ```rust
