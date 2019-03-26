@@ -139,7 +139,7 @@ assert_eq!( t.get_interval_start( 11 ), 19isize );
 ```
 
 ### sarsa policy search
-#### implementation: using eligibility trace, configurable reward decay and rollout factors, Q-learning based, basic thread parallel implementation  
+#### implementation: using eligibility trace, configurable reward decay and rollout factors, SARSA, basic thread parallel implementation  
 
 #### notes: This is an implementation attempt based on readings from various sources such as Reinforcement Learning by Sutton et al.
 
