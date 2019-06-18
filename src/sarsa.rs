@@ -87,7 +87,8 @@ pub fn search< G, State, Action >( criteria: & SearchCriteria,
                                    g: & mut G )
                                    -> Result< ( HashMap< ( State, Action ), f64 >,
                                                 HashMap< State, Vec< ( Action, f64 ) > >,
-                                                HashMap< State, f64 > ), & 'static str >
+                                                HashMap< State, f64 >,
+                                                u64 ), & 'static str >
     where G: Game< State, Action >, State: Clone + cmp::Eq + hash::Hash + fmt::Debug, Action: Clone + cmp::Eq + hash::Hash + fmt::Debug {
 
     criteria.check()?;
@@ -279,7 +280,7 @@ pub fn search< G, State, Action >( criteria: & SearchCriteria,
     }
     let policy_normalized = normalized_policy_actions_array( & policy_values );
     let expect = get_expectation_policy( & policy_values );
-    Ok( ( policy_values, policy_normalized, expect ) )
+    Ok( ( policy_values, policy_normalized, expect, iter as u64 ) )
 }
 
 fn get_expectation_policy< State, Action >( policy_map: & HashMap< (State, Action), f64 > )
