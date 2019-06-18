@@ -10,3 +10,5 @@ pub mod sarsa;
 
 pub mod softmax;
 pub mod policy;
+
+pub mod dsu;
