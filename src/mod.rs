@@ -12,3 +12,4 @@ pub mod softmax;
 pub mod policy;
 
 pub mod dsu;
+pub mod bit;

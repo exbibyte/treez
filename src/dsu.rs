@@ -1,7 +1,3 @@
-use std::io::{self, Read};
-use std::collections::{HashSet,HashMap};
-use std::cmp;
-    
 #[derive(Debug,Clone,Copy)]
 pub struct S {
     pub id: usize,
@@ -41,7 +37,7 @@ impl Dsu {
         idx
     }
     
-    pub fn merge( & mut self, mut a: usize, mut b: usize ) {
+    pub fn merge( & mut self, a: usize, b: usize ) {
 
         if a != b {
 
