@@ -1,9 +1,12 @@
 use std::cmp;
 use std::mem;
-use std::collections::HashMap;
+use std::collections::{HashSet,HashMap};
 
 extern crate rand;
 use self::rand::Rng;
+
+extern crate chrono;
+use self::chrono::prelude::*;
 
 #[derive(Default,Clone,Debug)]
 pub struct Treap< T > where T: Clone + Default {
@@ -113,8 +116,6 @@ impl <T> Treap<T> where T: Clone + Default {
             }
         };
         ret
-        // }  
-    
     }
 
     ///return position of an item if it has the same key, priority is updated for an existing item
@@ -623,6 +624,47 @@ impl <T> Treap<T> where T: Clone + Default {
             _ => { panic!(); },
         }
     }
+
+    pub fn dbg_depth( & self, instance: usize ) -> f32 {
+        
+        let r : usize = match self.instances.get(&instance) {
+            Some(x) if x.is_some() => {
+                x.unwrap()
+            },
+            _ => {
+                return 0.
+            },
+        };
+        
+        let mut hm = HashSet::new();
+        let mut q = vec![r];
+        
+        let mut leaf_depths = vec![];
+        
+        while !q.is_empty() {
+            let l = q.len();
+            let cur = q.pop().unwrap();
+            match hm.get(&cur) {
+                Some(x) => {
+                    leaf_depths.push( l );
+                },
+                _ => {
+                    hm.insert(cur);
+                    q.push(cur);
+                    if let Some(x) = self.link_child[cur].0 {
+                        q.push(x);
+                    }
+                    if let Some(x) = self.link_child[cur].1 {
+                        q.push(x);
+                    }                    
+                },
+            }
+        }
+
+        let total = leaf_depths.iter().fold(0,|acc,val| acc + *val );
+        let avg = total as f32 / leaf_depths.len() as f32;
+        avg
+    }
 }
 
 #[test]
@@ -948,7 +990,7 @@ fn test_treap_remove(){
         check.for_each(|(a,b)| {assert!( equal_f32( *a, *b ) );} );
         assert!( t.instances.get(&inst).unwrap().is_none() );
     }
-    dbg!( &t );
+    // dbg!( &t );
 }
 
 #[test]
@@ -1310,4 +1352,54 @@ fn test_treap_split_merge(){
         let check = expected_merged.iter().zip( ret.iter() );
         check.for_each(|(a,b)| {assert!( equal_f32( (*a as f32), *b ) );} );
     }
+}
+
+#[test]
+fn test_treap_stress(){
+
+    let count = 100_000;
+    let v = (0..count).map(|x| x as f32 ).collect::<Vec<_>>();
+    let mut t = Treap::init();
+    let inst = t.new_instance();
+
+    let t0 = Local::now();
+
+    for i in v.iter() {
+        t.insert( inst, *i, *i as i32 );
+    }
+    
+    let t1 = Local::now();
+        
+    {
+        let ret = t.query_range( inst, -1e-20, 1e20 )
+            .iter().map(|x| t.key(*x)).collect::<Vec<_>>();
+        assert_eq!( ret.len(), count );
+    }
+
+    let avg_depth = t.dbg_depth( inst );
+    dbg!( (count as f32).log2()+1., &avg_depth );
+    
+    assert!( 5. * ((count as f32).log2()+1.) > avg_depth );
+    
+    let v2 = v.iter().cloned().map(|x| (x, x+0.5) ).collect::<Vec<_>>();
+
+    let t2 = Local::now();
+    
+    for i in v2.iter() {
+        t.remove_key_range( inst, i.0, i.1 );
+    }
+    
+    let t3 = Local::now();
+
+    {
+        let ret = t.query_range( inst, -1e-20, 1e20 )
+            .iter().map(|x| t.key(*x)).collect::<Vec<_>>();
+        assert_eq!( ret.len(), 0 );
+    }
+    
+    let t_ins = t1.signed_duration_since(t0).num_microseconds().unwrap() as f64;
+    let t_rem = t3.signed_duration_since(t2).num_microseconds().unwrap() as f64;
+    
+    println!( "{} us / insert", t_ins / count as f64 );
+    println!( "{} us / removal", t_rem / count as f64 );
 }
