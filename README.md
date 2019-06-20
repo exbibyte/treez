@@ -2,7 +2,16 @@
 
 ## A collection of useful data structures and algorithms
 
-current implementations: segment tree, rb tree, reverse auto gradient differentiator, indexed tree, sarsa Q-Learning
+### current implementations:
+#### segment tree
+#### rb tree
+#### indexed tree
+#### treap/cartesian tree
+#### disjoint union set
+#### strongly connected components
+#### backtracking
+#### sarsa Q-Learning
+#### reverse auto gradient differentiator
 
 current work in progress: autograd and neural network
 

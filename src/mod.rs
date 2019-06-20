@@ -18,3 +18,5 @@ pub mod bit;
 pub mod scc;
 
 pub mod backtrack;
+
+pub mod treap;
