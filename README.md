@@ -13,8 +13,6 @@
 #### sarsa Q-Learning
 #### reverse auto gradient differentiator
 
-current work in progress: autograd and neural network
-
 ### segment tree  
 #### implementation: array based
 
@@ -342,4 +340,51 @@ fn main() {
         print!( "\n" );
     }
 }
+```
+
+### treap
+
+```rust
+	let mut t = treap::NodePtr::new();
+    
+    {
+        let v = t.query_key_range( -100., 100. ).iter().
+            map(|x| x.key()).collect::<Vec<_>>();
+        
+        assert_eq!( v.len(), 0 );
+    }
+
+    let items = vec![ 56, -45, 1, 6, 9, -30, 7, -9, 12, 77, -25 ];
+    for i in items.iter() {
+        t = t.insert( *i as f32, *i ); 
+    }
+	
+    t = t.remove_by_key_range( 5., 10. );
+    
+    let mut expected = items.iter().cloned().filter(|x| *x < 5 || *x >= 10 ).collect::<Vec<_>>();
+    expected.sort();
+
+    {
+        let v = t.query_key_range( -100., 100. ).iter().
+            map(|x| x.key()).collect::<Vec<_>>();
+        
+        assert_eq!( v.len(), expected.len() );
+
+        expected.iter().zip( v.iter() )
+            .for_each(|(a,b)| assert!(equal_f32( (*a as f32), *b ) ) );
+    }
+
+    let (t1, t2) = t.split_by_key(0.);
+
+    let t3 = t1.merge_contiguous( t2 );
+
+    {
+        let v = t3.query_key_range( -100., 100. ).iter().
+            map(|x| x.key()).collect::<Vec<_>>();
+        
+        assert_eq!( v.len(), expected.len() );
+
+        expected.iter().zip( v.iter() )
+            .for_each(|(a,b)| assert!(equal_f32( (*a as f32), *b ) ) );
+    }
 ```
