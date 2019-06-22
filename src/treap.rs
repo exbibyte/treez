@@ -542,17 +542,17 @@ impl <T> Treap<T> where T: Clone + Default {
     /// split given treap instance into two instances: a:[ x | x.key < k ], b:[ x | x.key >= k ]
     /// returns instance handles to split treaps (a,b)
     pub fn split( & mut self, instance: usize, k: f32 ) -> ( usize, usize ) {
-        fn equal_f32( a: f32, b: f32 ) -> bool {
-            if a - 1e-4 < b || a + 1e-4 > b {
+        fn equal_f32_sentinal( a: f32, b: f32 ) -> bool {
+            if a - 1e-1 < b && a + 1e-1 > b {
                 true
             } else {
                 false
             }
         }
 
-        let (existing, idx) = self.insert_with_priority( instance, k, -1e-20, Default::default() );
+        let (existing, idx) = self.insert_with_priority( instance, k, -1e20, Default::default() );
         
-        assert!( equal_f32( self.key(self.instances.get(&instance).unwrap().expect("root non-existent") ), -1e-20) );
+        assert!( equal_f32_sentinal( self.prio(self.instances.get(&instance).unwrap().expect("root non-existent") ), -1e20) );
         
         assert_eq!( idx, self.instances.get(&instance).unwrap().expect("root non-existent") );
 
@@ -670,7 +670,7 @@ impl <T> Treap<T> where T: Clone + Default {
 #[test]
 fn test_treap_search() {
     fn equal_f32( a: f32, b: f32 ) -> bool {
-        if a - 1e-4 < b || a + 1e-4 > b {
+        if a - 1e-4 < b && a + 1e-4 > b {
             true
         } else {
             false
@@ -832,7 +832,7 @@ fn test_treap_predecessor() {
 fn test_treap_query_range() {
     
     fn equal_f32( a: f32, b: f32 ) -> bool {
-        if a - 1e-4 < b || a + 1e-4 > b {
+        if a - 1e-4 < b && a + 1e-4 > b {
             true
         } else {
             false
@@ -905,7 +905,7 @@ fn test_treap_query_range() {
 fn test_treap_remove(){
 
     fn equal_f32( a: f32, b: f32 ) -> bool {
-        if a - 1e-4 < b || a + 1e-4 > b {
+        if a - 1e-4 < b && a + 1e-4 > b {
             true
         } else {
             false
@@ -997,7 +997,7 @@ fn test_treap_remove(){
 fn test_treap_remove_key_range(){
     
     fn equal_f32( a: f32, b: f32 ) -> bool {
-        if a - 1e-4 < b || a + 1e-4 > b {
+        if a - 1e-4 < b && a + 1e-4 > b {
             true
         } else {
             false
@@ -1066,7 +1066,7 @@ fn test_treap_remove_key_range(){
 fn test_treap_insert_remove_loop(){
     
     fn equal_f32( a: f32, b: f32 ) -> bool {
-        if a - 1e-4 < b || a + 1e-4 > b {
+        if a - 1e-4 < b && a + 1e-4 > b {
             true
         } else {
             false
@@ -1128,7 +1128,7 @@ fn test_treap_insert_remove_loop(){
 fn test_treap_split1(){
     
     fn equal_f32( a: f32, b: f32 ) -> bool {
-        if a - 1e-4 < b || a + 1e-4 > b {
+        if a - 1e-4 < b && a + 1e-4 > b {
             true
         } else {
             false
@@ -1192,7 +1192,7 @@ fn test_treap_split1(){
 fn test_treap_split2(){
     
     fn equal_f32( a: f32, b: f32 ) -> bool {
-        if a - 1e-4 < b || a + 1e-4 > b {
+        if a - 1e-4 < b && a + 1e-4 > b {
             true
         } else {
             false
@@ -1240,7 +1240,7 @@ fn test_treap_split2(){
 fn test_treap_merge(){
     
     fn equal_f32( a: f32, b: f32 ) -> bool {
-        if a - 1e-4 < b || a + 1e-4 > b {
+        if a - 1e-4 < b && a + 1e-4 > b {
             true
         } else {
             false
@@ -1295,7 +1295,7 @@ fn test_treap_merge(){
 fn test_treap_split_merge(){
     
     fn equal_f32( a: f32, b: f32 ) -> bool {
-        if a - 1e-4 < b || a + 1e-4 > b {
+        if a - 1e-4 < b && a + 1e-4 > b {
             true
         } else {
             false
