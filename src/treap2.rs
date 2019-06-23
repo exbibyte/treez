@@ -1928,7 +1928,7 @@ fn test_treap_depth(){
     
     let (d_min,d_max,d_avg) = t.dbg_depth();
 
-    println!("dmin: {:?}, dmax: {:?}, davg: {:?}", &d_avg, &d_min, &d_max);
+    println!("dmin: {:?}, dmax: {:?}, davg: {:?}", &d_min, &d_max, &d_avg);
     
     println!( "expected depth: {}", (count as f32).log2()+1. );
     
