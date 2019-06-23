@@ -278,7 +278,6 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
     
     /// rotates current node up
     pub fn rot_up_left( & self ) -> Self {
-
         // before:
         //          pp
         //          |
@@ -317,7 +316,6 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
 
     /// rotates current node up and returns itself
     pub fn rot_up_right( & self ) -> Self {
-
         // before:
         //          pp
         //          |
@@ -705,81 +703,128 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
         }
     }
 
-    // todo
-    // pub fn union( & self, other: Self ) -> Self {
-    
-    //     println!("union: {}, {}", self.prio(), other.prio());
-
-    //     let (children, split_other) = if self.prio() < other.prio() {
-                
-    //         let k = self.key();
-    //         let (t1,t2) = other.split_by_key( k );
-
-    //         let l2 = if t1.is_empty() { None } else { Some(t1) };
-    //         let r2 = if t2.is_empty() { None } else { Some(t2) };
-
-    //         let l = self.child_l();
-    //         let r = self.child_r();
-
-    //         ([ (l, l2), (r, r2) ], true)
-    //     } else {
-            
-    //         let k = other.key();
-    //         let (t1,t2) = self.split_by_key( k );
-
-    //         let l2 = if t1.is_empty() { None } else { Some(t1) };
-    //         let r2 = if t2.is_empty() { None } else { Some(t2) };
-
-    //         let l = other.child_l();
-    //         let r = other.child_r();
-            
-    //         ([ (l, l2), (r, r2) ], false)
-    //     };
-
-    //     for i in 0..2 {
-    //         match &children[i] {
-    //             (Some(a),Some(b)) => {
-    //                 let combined = a.union(b.clone());
-    //                 if split_other {
-    //                     if i == 0 {
-    //                         self.link_left(&Some(combined.clone()));
-    //                     } else {
-    //                         self.link_right(&Some(combined.clone()));
-    //                     }
-    //                 } else {
-    //                     if i == 0 {
-    //                         other.link_left(&Some(combined.clone()));
-    //                     } else {
-    //                         other.link_right(&Some(combined.clone()));
-    //                     }
-    //                 }
-    //             },
-    //             (Some(a),_) => {},
-    //             (_,Some(b)) => {
-    //                 if split_other {
-    //                     if i == 0 {
-    //                         self.link_left(&Some(b.clone()));                        
-    //                     } else {
-    //                         self.link_right(&Some(b.clone()));
-    //                     }
-    //                 } else {
-    //                     if i == 0 {
-    //                         other.link_left(&Some(b.clone()));                        
-    //                     } else {
-    //                         other.link_right(&Some(b.clone()));
-    //                     }
-    //                 }
-    //             },
-    //             (_,_) => {},                
-    //         }
-    //     }
+    /// returns the union of the input 2 tress
+    pub fn union( & self, mut other: Self ) -> Self {
         
-    //     if split_other {
-    //         self.clone()
-    //     } else {
-    //         other
-    //     }
-    // }
+        if self.is_empty() && other.is_empty() {
+            return self.clone()
+        }else if self.is_empty() {
+            return other
+        } else if other.is_empty() {
+            return self.clone()
+        }
+        
+        if self.prio() < other.prio() {
+
+            other.0.borrow_mut().parent = NodePtrWk(Weak::new());
+                
+            let k = self.key();
+            let (t1,t2) = other.split_by_key( k );
+            
+            let l2 = if t1.is_empty() { None } else { Some(t1) };
+            let r2 = if t2.is_empty() { None } else { Some(t2) };
+
+            let l = self.child_l();
+            let r = self.child_r();
+            
+            match (&l,&l2){
+                (Some(a),Some(b)) => {
+                    let ll = a.union(b.clone());
+                    if ll.is_empty(){
+                        self.link_left(&None);
+                    } else {
+                        self.link_left(&Some(ll));
+                    }
+                },
+                (Some(a),None) => {
+                    self.link_left(&Some(a.clone()));
+                },
+                (None,Some(b)) => {
+                    self.link_left(&Some(b.clone()));
+                },
+                (None,None) => {
+                    self.link_left(&None);
+                },
+            }
+
+            match (&r,&r2){
+                (Some(a),Some(b)) => {
+                    let rr = a.union(b.clone());
+                    if rr.is_empty(){
+                        self.link_right(&None);
+                    } else {
+                        self.link_right(&Some(rr));
+                    }
+                },
+                (Some(a),None) => {
+                    self.link_right(&Some(a.clone()));
+                },
+                (None,Some(b)) => {
+                    self.link_right(&Some(b.clone()));
+                },
+                (None,None) => {
+                    self.link_right(&None);
+                },
+            }
+
+            self.clone()
+                
+        } else {
+            
+            self.0.borrow_mut().parent = NodePtrWk(Weak::new());
+            
+            let k = other.key();
+            let (t1,t2) = self.split_by_key( k );
+            
+            let l2 = if t1.is_empty() { None } else { Some(t1) };
+            let r2 = if t2.is_empty() { None } else { Some(t2) };
+
+            let l = other.child_l();
+            let r = other.child_r();
+            
+            match (&l,&l2){
+                (Some(a),Some(b)) => {
+                    let ll = a.union(b.clone());
+                    if ll.is_empty(){
+                        other.link_left(&None);
+                    } else {
+                        other.link_left(&Some(ll));
+                    }
+                },
+                (Some(a),None) => {
+                    other.link_left(&Some(a.clone()));
+                },
+                (None,Some(b)) => {
+                    other.link_left(&Some(b.clone()));
+                },
+                (None,None) => {
+                    other.link_left(&None);
+                },
+            }
+
+            match (&r,&r2){
+                (Some(a),Some(b)) => {
+                    let rr = a.union(b.clone());
+                    if rr.is_empty(){
+                        other.link_right(&None);
+                    } else {
+                        other.link_right(&Some(rr));
+                    }
+                },
+                (Some(a),None) => {
+                    other.link_right(&Some(a.clone()));
+                },
+                (None,Some(b)) => {
+                    other.link_right(&Some(b.clone()));
+                },
+                (None,None) => {
+                    other.link_right(&None);
+                },
+            }
+
+            other
+        }
+    }
     
     /// returns min, max, avg depths
     pub fn dbg_depth( & self ) -> (f32,f32,f32) {
@@ -1956,66 +2001,144 @@ fn test_treap_insert_remove_range_stress(){
     println!( "{} us/del", t_del as f32 / count as f32 );
 }
 
-// #[test]
-// fn test_treap_union(){
+#[test]
+fn test_treap_union_empty(){
 
-//     fn equal_f32( a: f32, b: f32 ) -> bool {
-//         if a - 1e-4 < b && a + 1e-4 > b {
-//             true
-//         } else {
-//             false
-//         }
-//     }
-    
-//     let count = 10;
-    
-//     let va = (0..count).map(|x| x*2).collect::<Vec<_>>();
-//     let vb = (0..count).map(|x| x*2+1).collect::<Vec<_>>();
+    fn equal_f32( a: f32, b: f32 ) -> bool {
+        if a - 1e-4 < b && a + 1e-4 > b {
+            true
+        } else {
+            false
+        }
+    }
 
-//     let mut t1 = NodePtr::new();
-//     let mut t2 = NodePtr::new();
-    
-//     for i in va.iter() {
-//         t1 = t1.insert( *i as f32, *i );
-//     }
+    {
+        let mut t1 : NodePtr<f32,i32> = NodePtr::new();
+        let mut t2 = NodePtr::new();
+        let t3 = t1.union(t2);
+        assert!( t3.is_empty() );
+    }
 
-//     for i in vb.iter() {
-//         t2 = t2.insert( *i as f32, *i );
-//     }
-
-//     {
-//         let v = t1.query_key_range( -1e10, 1e10 ).iter().
-//             map(|x| x.key()).collect::<Vec<_>>();
+    {   
+        let count = 10;
         
-//         assert_eq!( v.len(), va.len() );
+        let va = (0..count).map(|x| x*2).collect::<Vec<_>>();
 
-//         va.iter().zip( v.iter() )
-//             .for_each(|(a,b)| assert!(equal_f32( (*a as f32), *b ) ) );
-//     }
-
-//     {
-//         let v = t2.query_key_range( -1e10, 1e10 ).iter().
-//             map(|x| x.key()).collect::<Vec<_>>();
+        let mut t1 = NodePtr::new();
+        let mut t2 = NodePtr::new();
         
-//         assert_eq!( v.len(), vb.len() );
+        for i in va.iter() {
+            t1 = t1.insert( *i as f32, *i );
+        }
 
-//         vb.iter().zip( v.iter() )
-//             .for_each(|(a,b)| assert!(equal_f32( (*a as f32), *b ) ) );
-//     }
+        let t3 = t1.union(t2);
 
-//     let t3 = t2.union(t1);
+        {
+            let v = t3.query_key_range( -1e10, 1e10 ).iter()
+                .map(|x| x.key()).collect::<Vec<_>>();
+            
+            assert_eq!( v.len(), va.len() );
 
-//     {
-//         let v = t3.query_key_range( -1e10, 1e10 ).iter().
-//             map(|x| x.key()).collect::<Vec<_>>();
+            va.iter().zip( v.iter() )
+                .for_each(|(a,b)| assert!(equal_f32( (*a as f32), *b ) ) );
+        }
+    }
 
-//         let mut combined = va.iter().chain(vb.iter()).cloned().collect::<Vec<i32>>();
-
-//         combined.sort();
+    {   
+        let count = 10;
         
-//         assert_eq!( v.len(), combined.len() );
+        let vb = (0..count).map(|x| x*2+1).collect::<Vec<_>>();
 
-//         combined.iter().zip( v.iter() )
-//             .for_each(|(a,b)| assert!(equal_f32( (*a as f32), *b ) ) );
-//     }
-// }
+        let mut t1 = NodePtr::new();
+        let mut t2 = NodePtr::new();
+
+        for i in vb.iter() {
+            t2 = t2.insert( *i as f32, *i );
+        }
+
+        let t3 = t1.union(t2);
+
+        {
+            let v = t3.query_key_range( -1e10, 1e10 ).iter()
+                .map(|x| x.key()).collect::<Vec<_>>();
+            
+            assert_eq!( v.len(), vb.len() );
+
+            vb.iter().zip( v.iter() )
+                .for_each(|(a,b)| assert!(equal_f32( (*a as f32), *b ) ) );
+        }
+    }
+
+}
+
+#[test]
+fn test_treap_union_nonempty(){
+
+    fn equal_f32( a: f32, b: f32 ) -> bool {
+        if a - 1e-3 < b && a + 1e-3 > b {
+            true
+        } else {
+            false
+        }
+    }
+
+    let count = 1000;
+    
+    let va = (0..count).map(|x| (x*2) ).collect::<Vec<i32>>();
+    let vb = (0..count).map(|x| (x*2+1) ).collect::<Vec<i32>>();
+    
+    let mut t1 : NodePtr<i32,i32> = NodePtr::new();
+    let mut t2 : NodePtr<i32,i32> = NodePtr::new();
+    
+    for i in va.iter() {
+        t1 = t1.insert( *i, *i );
+    }
+
+    for i in vb.iter() {
+        t2 = t2.insert( *i, *i );
+    }
+    
+    {
+        let v = t1.query_key_range( -10_000_000, 10_000_000 ).iter()
+            .map(|x| x.key()).collect::<Vec<_>>();
+        
+        assert_eq!( v.len(), va.len() );
+
+        va.iter().zip( v.iter() )
+            .for_each(|(a,b)| assert_eq!( *a, *b ) );
+    }
+
+    {
+        let v = t2.query_key_range( -10_000_000, 10_000_000 ).iter()
+            .map(|x| x.key()).collect::<Vec<_>>();
+        
+        assert_eq!( v.len(), vb.len() );
+
+        vb.iter().zip( v.iter() )
+            .for_each(|(a,b)| assert_eq!( *a, *b ) );
+    }
+
+    let ck1 = Local::now();
+   
+    let t3 = t2.union(t1);
+
+    let ck2 = Local::now();
+    
+    {
+        let v = t3.query_key_range( -10_000_000, 10_000_000 ).iter().
+            map(|x| x.key()).collect::<Vec<_>>();
+        
+        let mut combined = va.iter().chain(vb.iter()).cloned().collect::<Vec<_>>();
+
+        combined.sort_by(|a,b| a.partial_cmp(b).unwrap_or(Ordering::Equal) );
+        
+        assert_eq!( v.len(), combined.len() );
+
+        combined.iter().zip( v.iter() )
+            .for_each(|(a,b)| assert_eq!( *a, *b ) );
+    }
+
+    let t_union = ck2.signed_duration_since(ck1).num_microseconds().unwrap() as f64;
+    println!("union of sizes({},{}): {} us", count, count, t_union );
+    
+}

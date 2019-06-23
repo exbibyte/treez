@@ -345,7 +345,7 @@ fn main() {
 ### treap
 
 ```rust
-	let mut t = treap::NodePtr::new();
+    let mut t = treap::NodePtr::new();
     
     {
         let v = t.query_key_range( -100., 100. ).iter().
@@ -358,7 +358,7 @@ fn main() {
     for i in items.iter() {
         t = t.insert( *i as f32, *i ); 
     }
-	
+    
     t = t.remove_by_key_range( 5., 10. );
     
     let mut expected = items.iter().cloned().filter(|x| *x < 5 || *x >= 10 ).collect::<Vec<_>>();
@@ -387,4 +387,15 @@ fn main() {
         expected.iter().zip( v.iter() )
             .for_each(|(a,b)| assert!(equal_f32( (*a as f32), *b ) ) );
     }
+    
+    let va = (100..200).map(|x| (x*2) ).collect::<Vec<i32>>();
+    
+    let mut t4 = treap::NodePtr::new();
+
+    for i in va.iter() {
+        t4 = t4.insert( (*i as f32), *i );
+    }
+
+    let t5 = t3.union(t4);
+    
 ```
