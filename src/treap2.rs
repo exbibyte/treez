@@ -184,8 +184,9 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
         n
     }
 
-    ///inserts a node and returns the root
-    pub fn insert_with_priority( & self, k: K, val: T, priority: f32 ) -> NodePtr<K,T> {
+    ///inserts a node and returns ( root, already exists )
+    ///existing node value and priority is updated
+    pub fn insert_with_priority( & self, k: K, val: T, priority: f32 ) -> (NodePtr<K,T>, bool) {
         
         match self.search( k ){
             SearchResult::Exact(x) => {
@@ -204,7 +205,7 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
                 //fix downward pass
                 let root2 = x.fixdown_priority();
                 
-                self.get_root()
+                ( self.get_root(), true )
             },
             SearchResult::Nearest(x) => {
 
@@ -227,7 +228,7 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
                 
                 let root = child.as_ref().unwrap().fixup_priority();
             
-                self.get_root()
+                ( self.get_root(), false )
             },
             Empty => {
 
@@ -239,13 +240,13 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
                 self.0.borrow_mut().children = (None,None);
                 self.0.borrow_mut().parent = Default::default();
                 
-                self.get_root()
+                ( self.get_root(), false )
             },
         }
     }
 
-    ///inserts a node and returns the root
-    pub fn insert( & self, k: K, val: T ) -> NodePtr<K,T> {
+    ///inserts a node and returns ( root, already_exists )
+    pub fn insert( & self, k: K, val: T ) -> ( NodePtr<K,T>, bool ) {
         let prio = Self::gen_priority_random();
         self.insert_with_priority( k, val, prio )
     }
@@ -399,11 +400,6 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
         let mut count = 0;
         
         let mut root = None;
-
-        // match self.0.borrow().parent.0.upgrade().as_ref(){
-        //     None => { },
-        //     _ => {}
-        // }
         
         loop {
             match (x.child_l().as_ref(), x.child_r().as_ref()) {
@@ -642,12 +638,13 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
             ret
         }
     }
-    /// returns a, b pair such that a: [x| x.key<k], b: [x| x.key>k]
-    pub fn split_by_key( & self, k: K ) -> (Self, Self) {
+    /// returns ((a, b), c) such that a: [x| x.key<k], b: [x| x.key>k]
+    /// and c is present if c.key == k
+    pub fn split_by_key( & self, k: K ) -> ( (Self, Self), Option<Self>) {
 
         //insert node with a sentil lowest priority so it's at the root
 
-        let root = self.insert_with_priority( k, Default::default(), -1e30 );
+        let ( root, exists ) = self.insert_with_priority( k, Default::default(), -1e30 );
 
         //remove the root node and return 2 child nodes
         let l = root.child_l();
@@ -675,7 +672,11 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
             },
         };
         
-        (t_l, t_r)
+        if exists {
+            ( (t_l, t_r), Some( root.clone() ) )
+        } else {
+            ( (t_l, t_r), None )
+        }
     }
 
     /// assumes a.merge(b) is such that keys of a < keys of b and returns merged tree
@@ -703,7 +704,7 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
         }
     }
 
-    /// returns the union of the input 2 tress
+    /// returns the union of 2 trees
     pub fn union( & self, mut other: Self ) -> Self {
         
         if self.is_empty() && other.is_empty() {
@@ -713,116 +714,215 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
         } else if other.is_empty() {
             return self.clone()
         }
-        
-        if self.prio() < other.prio() {
 
-            other.0.borrow_mut().parent = NodePtrWk(Weak::new());
-                
-            let k = self.key();
-            let (t1,t2) = other.split_by_key( k );
-            
-            let l2 = if t1.is_empty() { None } else { Some(t1) };
-            let r2 = if t2.is_empty() { None } else { Some(t2) };
-
-            let l = self.child_l();
-            let r = self.child_r();
-            
-            match (&l,&l2){
-                (Some(a),Some(b)) => {
-                    let ll = a.union(b.clone());
-                    if ll.is_empty(){
-                        self.link_left(&None);
-                    } else {
-                        self.link_left(&Some(ll));
-                    }
-                },
-                (Some(a),None) => {
-                    self.link_left(&Some(a.clone()));
-                },
-                (None,Some(b)) => {
-                    self.link_left(&Some(b.clone()));
-                },
-                (None,None) => {
-                    self.link_left(&None);
-                },
-            }
-
-            match (&r,&r2){
-                (Some(a),Some(b)) => {
-                    let rr = a.union(b.clone());
-                    if rr.is_empty(){
-                        self.link_right(&None);
-                    } else {
-                        self.link_right(&Some(rr));
-                    }
-                },
-                (Some(a),None) => {
-                    self.link_right(&Some(a.clone()));
-                },
-                (None,Some(b)) => {
-                    self.link_right(&Some(b.clone()));
-                },
-                (None,None) => {
-                    self.link_right(&None);
-                },
-            }
-
-            self.clone()
-                
+        let (a,b) = if self.prio() < other.prio() {
+            ( self.clone(), other.clone() )
         } else {
-            
-            self.0.borrow_mut().parent = NodePtrWk(Weak::new());
-            
-            let k = other.key();
-            let (t1,t2) = self.split_by_key( k );
-            
-            let l2 = if t1.is_empty() { None } else { Some(t1) };
-            let r2 = if t2.is_empty() { None } else { Some(t2) };
+            ( other.clone(), self.clone() )
+        };
+        
+        b.0.borrow_mut().parent = NodePtrWk(Weak::new());
+        
+        let k = a.key();
+        let ((t1,t2), _) = b.split_by_key( k );
+        
+        let l2 = if t1.is_empty() { None } else { Some(t1) };
+        let r2 = if t2.is_empty() { None } else { Some(t2) };
 
-            let l = other.child_l();
-            let r = other.child_r();
+        let l = a.child_l();
+        let r = a.child_r();
+        
+        match (&l,&l2){
+            (Some(x),Some(y)) => {
+                let ll = x.union(y.clone());
+                if ll.is_empty(){
+                    a.link_left(&None);
+                } else {
+                    a.link_left(&Some(ll));
+                }
+            },
+            (Some(x),None) => {
+                a.link_left(&Some(x.clone()));
+            },
+            (None,Some(y)) => {
+                a.link_left(&Some(y.clone()));
+            },
+            (None,None) => {
+                a.link_left(&None);
+            },
+        }
+
+        match (&r,&r2){
+            (Some(x),Some(y)) => {
+                let rr = x.union(y.clone());
+                if rr.is_empty(){
+                    a.link_right(&None);
+                } else {
+                    a.link_right(&Some(rr));
+                }
+            },
+            (Some(x),None) => {
+                a.link_right(&Some(x.clone()));
+            },
+            (None,Some(y)) => {
+                a.link_right(&Some(y.clone()));
+            },
+            (None,None) => {
+                a.link_right(&None);
+            },
+        }
+
+        a
+
+    }
+
+    /// returns the intersection of 2 trees
+    pub fn intersect( & self, mut other: Self ) -> Self {
+
+        if self.is_empty() || other.is_empty() {
+            return NodePtr::new()
+        }
+
+        let ( mut a, mut b ) = if self.prio() < other.prio() {
+            ( self.clone(), other.clone() )
+        } else {
+            ( other.clone(), self.clone() )
+        };
+        
+        b.0.borrow_mut().parent = NodePtrWk(Weak::new());
+        
+        let k = a.key();
+        let ((t1,t2),exists) = b.split_by_key( k );
+        
+        let l2 = if t1.is_empty() { None } else { Some(t1) };
+        let r2 = if t2.is_empty() { None } else { Some(t2) };
+
+        let l = a.child_l();
+        let r = a.child_r();
+
+        match exists {
             
-            match (&l,&l2){
-                (Some(a),Some(b)) => {
-                    let ll = a.union(b.clone());
-                    if ll.is_empty(){
-                        other.link_left(&None);
-                    } else {
-                        other.link_left(&Some(ll));
-                    }
-                },
-                (Some(a),None) => {
-                    other.link_left(&Some(a.clone()));
-                },
-                (None,Some(b)) => {
-                    other.link_left(&Some(b.clone()));
-                },
-                (None,None) => {
-                    other.link_left(&None);
-                },
-            }
+            Some(m) => { //intersection of current node is non-empty
+                
+                a = m.clone();
 
-            match (&r,&r2){
-                (Some(a),Some(b)) => {
-                    let rr = a.union(b.clone());
-                    if rr.is_empty(){
-                        other.link_right(&None);
-                    } else {
-                        other.link_right(&Some(rr));
-                    }
-                },
-                (Some(a),None) => {
-                    other.link_right(&Some(a.clone()));
-                },
-                (None,Some(b)) => {
-                    other.link_right(&Some(b.clone()));
-                },
-                (None,None) => {
-                    other.link_right(&None);
-                },
-            }
+                match (&l,&l2){
+                    (Some(x),Some(y)) => {
+                        
+                        let ll = x.intersect(y.clone());
+                        
+                        if ll.is_empty(){
+                            a.link_left(&None);
+                        } else {
+                            a.link_left(&Some(ll));
+                        }
+                    },
+                    _ => {
+                        a.link_left(&None);
+                    },
+                    // (Some(x),None) => {
+                    //     a.link_left(&None);
+                    // },
+                    // (None,Some(y)) => {
+                    //     a.link_left(&None);
+                    // },
+                    // (None,None) => {
+                    //     a.link_left(&None);
+                    // },
+                }
 
-            other
+                match (&r,&r2){
+                    (Some(x),Some(y)) => {
+
+                        let rr = x.intersect(y.clone());
+
+                        if rr.is_empty(){
+                            a.link_right(&None);
+                        } else {
+                            a.link_right(&Some(rr));
+                        }
+                    },
+                    _ => {
+                        a.link_right(&None);
+                    },
+                    // (Some(x),None) => {
+                    //     a.link_right(&None);
+                    // },
+                    // (None,Some(y)) => {
+                    //     a.link_right(&None);
+                    // },
+                    // (None,None) => {
+                    //     a.link_right(&None);
+                    // },
+                }
+
+                a
+            },
+            _ => { //intersection of current node is empty
+                
+               let left_branch = match (&l,&l2){
+                   (Some(x),Some(y)) => {
+
+                       let ll = x.intersect(y.clone());
+                       if ll.is_empty(){
+                           None
+                       } else {
+                           Some(ll)
+                       }
+                   },
+                   _ => {
+                       None
+                   },
+                    // (Some(x),None) => {
+                    //     None
+                    // },
+                    // (None,Some(y)) => {
+                    //     None
+                    // },
+                    // (None,None) => {
+                    //     None
+                    // },
+               };
+                
+                let right_branch = match (&r,&r2){
+                    (Some(x),Some(y)) => {
+                        
+                        let rr = x.intersect(y.clone());
+                        if rr.is_empty(){
+                            None
+                        } else {
+                            Some(rr)
+                        }
+                    },
+                    _ => {
+                        None
+                    },
+                    // (Some(x),None) => {
+                    //     None
+                    // },
+                    // (None,Some(y)) => {
+                    //     None
+                    // },
+                    // (None,None) => {
+                    //     None
+                    // },
+                };
+
+                match (left_branch,right_branch) {
+                    (Some(l),Some(r)) => {
+                        l.merge_contiguous(r.clone())
+                    },
+                    (Some(l),None) => {
+                        l
+                    },
+                    (None,Some(r)) => {
+                        r
+                    },
+                    (None,None) => {
+                        NodePtr::new()
+                    },
+                }
+            },
         }
     }
     
@@ -1334,19 +1434,19 @@ fn test_treap_insert_with_priority(){
     
     let mut t = NodePtr::new();
     
-    let t1 = t.insert_with_priority( 3., 3, 50. );
+    let ( t1, _ ) = t.insert_with_priority( 3., 3, 50. );
     
     assert!( equal_f32( t1.0.borrow().key, 3. ) );
     
-    let t2 = t1.insert_with_priority( 1., 1, 75. );
+    let ( t2, _ ) = t1.insert_with_priority( 1., 1, 75. );
     
     assert!( equal_f32( t2.0.borrow().key, 3. ) );
     
-    let t3 = t2.insert_with_priority( 8., 8, 30. );
+    let ( t3, _ ) = t2.insert_with_priority( 8., 8, 30. );
 
     assert!( equal_f32( t3.0.borrow().key, 8. ) );
 
-    let t4 = t3.insert_with_priority( 6., 6, -20. );
+    let ( t4, _ ) = t3.insert_with_priority( 6., 6, -20. );
 
     assert!( equal_f32( t4.0.borrow().key, 6. ) );
 }
@@ -1391,31 +1491,31 @@ fn test_treap_insert_with_priority_replacement(){
     
     let mut t = NodePtr::new();
     
-    let t1 = t.insert_with_priority( 3., 3, 50. );
+    let ( t1, _ ) = t.insert_with_priority( 3., 3, 50. );
     
     assert!( equal_f32( t1.0.borrow().key, 3. ) );
     
-    let t2 = t1.insert_with_priority( 1., 1, 75. );
+    let ( t2, _ ) = t1.insert_with_priority( 1., 1, 75. );
     
     assert!( equal_f32( t2.0.borrow().key, 3. ) );
 
-    let t3 = t2.insert_with_priority( 1., 1, 60. );
+    let ( t3, _ ) = t2.insert_with_priority( 1., 1, 60. );
     
     assert!( equal_f32( t3.0.borrow().key, 3. ) );
     
-    let t4 = t3.insert_with_priority( 8., 8, 30. );
+    let ( t4, _ ) = t3.insert_with_priority( 8., 8, 30. );
 
     assert!( equal_f32( t4.0.borrow().key, 8. ) );
 
-    let t5 = t4.insert_with_priority( 6., 6, -20. );
+    let ( t5, _ ) = t4.insert_with_priority( 6., 6, -20. );
 
     assert!( equal_f32( t5.0.borrow().key, 6. ) );
 
-    let t6 = t5.insert_with_priority( 6., 6, 100. );
+    let ( t6, _ ) = t5.insert_with_priority( 6., 6, 100. );
 
     assert!( equal_f32( t6.0.borrow().key, 8. ) );
 
-    let t7 = t6.insert_with_priority( 1., 1, 0. );
+    let ( t7, _ ) = t6.insert_with_priority( 1., 1, 0. );
 
     assert!( equal_f32( t7.0.borrow().key, 1. ) );
 }
@@ -1448,10 +1548,10 @@ fn test_treap_successor(){
     
     let mut t = NodePtr::new();
     
-    let t1 = t.insert_with_priority( 3., 3, 50. ); 
-    let t2 = t1.insert_with_priority( 1., 1, 75. );
-    let t3 = t2.insert_with_priority( 8., 8, 30. );
-    let t4 = t3.insert_with_priority( 6., 6, -20. );
+    let (t1,_) = t.insert_with_priority( 3., 3, 50. ); 
+    let (t2,_) = t1.insert_with_priority( 1., 1, 75. );
+    let (t3,_) = t2.insert_with_priority( 8., 8, 30. );
+    let (t4,_) = t3.insert_with_priority( 6., 6, -20. );
 
     match t4.search( 1. ) {
         SearchResult::Exact(x) => {
@@ -1493,11 +1593,11 @@ fn test_treap_predecessor(){
     
     let mut t = NodePtr::new();
     
-    let t1 = t.insert_with_priority( 3., 3, 50. ); 
-    let t2 = t1.insert_with_priority( 1., 1, 75. );
-    let t3 = t2.insert_with_priority( 8., 8, 30. );
-    let t4 = t3.insert_with_priority( 6., 6, -20. );
-    let t5 = t4.insert_with_priority( 7., 7, 100. );
+    let (t1,_) = t.insert_with_priority( 3., 3, 50. ); 
+    let (t2,_) = t1.insert_with_priority( 1., 1, 75. );
+    let (t3,_) = t2.insert_with_priority( 8., 8, 30. );
+    let (t4,_) = t3.insert_with_priority( 6., 6, -20. );
+    let (t5,_) = t4.insert_with_priority( 7., 7, 100. );
 
     match t5.search( 8. ) {
         SearchResult::Exact(x) => {
@@ -1541,11 +1641,11 @@ fn test_treap_query_key_range(){
     
     let mut t = NodePtr::new();
     
-    let t1 = t.insert_with_priority( 3., 3, 50. ); 
-    let t2 = t1.insert_with_priority( 1., 1, 75. );
-    let t3 = t2.insert_with_priority( 8., 8, 30. );
-    let t4 = t3.insert_with_priority( 6., 6, -20. );
-    let t5 = t4.insert_with_priority( 7., 7, 100. );
+    let (t1,_) = t.insert_with_priority( 3., 3, 50. ); 
+    let (t2,_) = t1.insert_with_priority( 1., 1, 75. );
+    let (t3,_) = t2.insert_with_priority( 8., 8, 30. );
+    let (t4,_) = t3.insert_with_priority( 6., 6, -20. );
+    let (t5,_) = t4.insert_with_priority( 7., 7, 100. );
 
     {
         let v = t5.query_key_range( -10., 10. ).iter().
@@ -1618,11 +1718,11 @@ fn test_treap_remove(){
 
     let t5 = {
         let t = NodePtr::new();
-        let t1 = t.insert_with_priority( 3., 3, 50. ); 
-        let t2 = t1.insert_with_priority( 1., 1, 75. );
-        let t3 = t2.insert_with_priority( 8., 8, 30. );
-        let t4 = t3.insert_with_priority( 6., 6, -20. );
-        t4.insert_with_priority( 7., 7, 100. )
+        let (t1,_) = t.insert_with_priority( 3., 3, 50. ); 
+        let (t2,_) = t1.insert_with_priority( 1., 1, 75. );
+        let (t3,_) = t2.insert_with_priority( 8., 8, 30. );
+        let (t4,_) = t3.insert_with_priority( 6., 6, -20. );
+        t4.insert_with_priority( 7., 7, 100. ).0
     };
 
     assert!( equal_f32( t5.key(), 6. ) );
@@ -1706,7 +1806,7 @@ fn test_treap_insert_remove_by_key(){
 
     let items = vec![ 56, -45, 1, 6, 9, -30, 7, -9, 12, 77, -25 ];
     for i in items.iter() {
-        t = t.insert( *i as f32, *i );        
+        t = t.insert( *i as f32, *i ).0;        
     }
     
     let mut expected = items.clone();
@@ -1762,7 +1862,7 @@ fn test_treap_remove_key_range(){
 
     let items = vec![ 56, -45, 1, 6, 9, -30, 7, -9, 12, 77, -25 ];
     for i in items.iter() {
-        t = t.insert( *i as f32, *i );        
+        t = t.insert( *i as f32, *i ).0;
     }
     
     let mut expected = items.clone();
@@ -1815,7 +1915,7 @@ fn test_treap_split_by_key(){
 
     let items = vec![ 56, -45, 1, 6, 9, -30, 7, -9, 12, 77, -25 ];
     for i in items.iter() {
-        t = t.insert( *i as f32, *i );        
+        t = t.insert( *i as f32, *i ).0;
     }
     
     let mut expected = items.clone();
@@ -1831,7 +1931,7 @@ fn test_treap_split_by_key(){
             .for_each(|(a,b)| assert!(equal_f32( (*a as f32), *b ) ) );
     }
 
-    let (t1, t2) = t.split_by_key(0.);
+    let ((t1, t2),_) = t.split_by_key(0.);
     
     {
         let f = expected.iter().cloned().filter(|x| *x < 0 ).collect::<Vec<_>>();
@@ -1880,7 +1980,7 @@ fn test_treap_split_merge(){
 
     let items = vec![ 56, -45, 1, 6, 9, -30, 7, -9, 12, 77, -25 ];
     for i in items.iter() {
-        t = t.insert( *i as f32, *i );        
+        t = t.insert( *i as f32, *i ).0;
     }
     
     let mut expected = items.clone();
@@ -1896,7 +1996,7 @@ fn test_treap_split_merge(){
             .for_each(|(a,b)| assert!(equal_f32( (*a as f32), *b ) ) );
     }
 
-    let (t1, t2) = t.split_by_key(0.);
+    let ((t1, t2),_) = t.split_by_key(0.);
 
     let t3 = t1.merge_contiguous( t2 );
 
@@ -1923,7 +2023,7 @@ fn test_treap_depth(){
     let mut t = NodePtr::new();
     
     for i in nums.iter() {
-        t = t.insert( *i, 0i32 );
+        t = t.insert( *i, 0i32 ).0;
     }
     
     let (d_min,d_max,d_avg) = t.dbg_depth();
@@ -1949,7 +2049,7 @@ fn test_treap_insert_remove_stress(){
     let t0 = Local::now();
     
     for i in nums.iter() {
-        t = t.insert( *i, 0i32 );
+        t = t.insert( *i, 0i32 ).0;
     }
 
     let t1 = Local::now();
@@ -1983,7 +2083,7 @@ fn test_treap_insert_remove_range_stress(){
     let t0 = Local::now();
     
     for i in nums.iter() {
-        t = t.insert( *i, 0i32 );
+        t = t.insert( *i, 0i32 ).0;
     }
 
     let t1 = Local::now();
@@ -2028,7 +2128,7 @@ fn test_treap_union_empty(){
         let mut t2 = NodePtr::new();
         
         for i in va.iter() {
-            t1 = t1.insert( *i as f32, *i );
+            t1 = t1.insert( *i as f32, *i ).0;
         }
 
         let t3 = t1.union(t2);
@@ -2053,7 +2153,7 @@ fn test_treap_union_empty(){
         let mut t2 = NodePtr::new();
 
         for i in vb.iter() {
-            t2 = t2.insert( *i as f32, *i );
+            t2 = t2.insert( *i as f32, *i ).0;
         }
 
         let t3 = t1.union(t2);
@@ -2091,11 +2191,11 @@ fn test_treap_union_nonempty(){
     let mut t2 : NodePtr<i32,i32> = NodePtr::new();
     
     for i in va.iter() {
-        t1 = t1.insert( *i, *i );
+        t1 = t1.insert( *i, *i ).0;
     }
 
     for i in vb.iter() {
-        t2 = t2.insert( *i, *i );
+        t2 = t2.insert( *i, *i ).0;
     }
     
     {
@@ -2140,5 +2240,218 @@ fn test_treap_union_nonempty(){
 
     let t_union = ck2.signed_duration_since(ck1).num_microseconds().unwrap() as f64;
     println!("union of sizes({},{}): {} us", count, count, t_union );
+    
+}
+
+#[test]
+fn test_treap_intersect_empty(){
+
+    fn equal_f32( a: f32, b: f32 ) -> bool {
+        if a - 1e-4 < b && a + 1e-4 > b {
+            true
+        } else {
+            false
+        }
+    }
+
+    {
+        let mut t1 : NodePtr<f32,i32> = NodePtr::new();
+        let mut t2 = NodePtr::new();
+        let t3 = t1.intersect(t2);
+        assert!( t3.is_empty() );
+    }
+
+    {   
+        let count = 10;
+        
+        let va = (0..count).map(|x| x*2).collect::<Vec<_>>();
+
+        let mut t1 = NodePtr::new();
+        let mut t2 = NodePtr::new();
+        
+        for i in va.iter() {
+            t1 = t1.insert( *i as f32, *i ).0;
+        }
+
+        let t3 = t1.intersect(t2);
+
+        {
+            let v = t3.query_key_range( -1e10, 1e10 ).iter()
+                .map(|x| x.key()).collect::<Vec<_>>();
+            
+            assert_eq!( v.len(), 0 );
+        }
+    }
+
+    {   
+        let count = 10;
+        
+        let vb = (0..count).map(|x| x*2+1).collect::<Vec<_>>();
+
+        let mut t1 = NodePtr::new();
+        let mut t2 = NodePtr::new();
+
+        for i in vb.iter() {
+            t2 = t2.insert( *i as f32, *i ).0;
+        }
+
+        let t3 = t1.intersect(t2);
+
+        {
+            let v = t3.query_key_range( -1e10, 1e10 ).iter()
+                .map(|x| x.key()).collect::<Vec<_>>();
+            
+            assert_eq!( v.len(), 0 );
+        }
+    }
+
+}
+
+#[test]
+fn test_treap_intersect_nonempty(){
+
+    fn equal_f32( a: f32, b: f32 ) -> bool {
+        if a - 1e-3 < b && a + 1e-3 > b {
+            true
+        } else {
+            false
+        }
+    }
+
+    let count = 20;
+    
+    let va = (0..count).map(|x| (x) ).collect::<Vec<i32>>();
+    let vb = (0..count/2).rev().map(|x| (x) ).collect::<Vec<i32>>();
+    
+    let mut t1 : NodePtr<i32,i32> = NodePtr::new();
+    let mut t2 : NodePtr<i32,i32> = NodePtr::new();
+    
+    for i in va.iter() {
+        t1 = t1.insert( *i, *i ).0;
+    }
+
+    for i in vb.iter() {
+        t2 = t2.insert( *i, *i ).0;
+    }
+    
+    {
+        let v = t1.query_key_range( -10_000_000, 10_000_000 ).iter()
+            .map(|x| x.key()).collect::<Vec<_>>();
+        
+        assert_eq!( v.len(), va.len() );
+
+        va.iter().zip( v.iter() )
+            .for_each(|(a,b)| assert_eq!( *a, *b ) );
+    }
+
+    {
+        let v = t2.query_key_range( -10_000_000, 10_000_000 ).iter()
+            .map(|x| x.key()).collect::<Vec<_>>();
+        
+        assert_eq!( v.len(), vb.len() );
+
+        let mut vb_expected = vb.clone();
+        vb_expected.sort();
+        
+        vb_expected.iter().zip( v.iter() )
+            .for_each(|(a,b)| assert_eq!( *a, *b ) );
+    }
+
+    let ck1 = Local::now();
+   
+    let t3 = t2.intersect(t1);
+    
+    let ck2 = Local::now();
+    
+    {
+        let v = t3.query_key_range( -10_000_000, 10_000_000 ).iter().
+            map(|x| x.key()).collect::<Vec<_>>();
+        
+        let mut expected = vb.clone();
+        expected.sort();
+        
+        assert_eq!( v.len(), expected.len() );
+
+        expected.iter().zip( v.iter() )
+            .for_each(|(a,b)| assert_eq!( *a, *b ) );
+    }
+
+    let t_elapse = ck2.signed_duration_since(ck1).num_microseconds().unwrap() as f64;
+    println!("intersect of sizes({},{}): {} us", count, count, t_elapse );
+    
+}
+
+
+#[test]
+fn test_treap_intersect_nonempty_2(){
+
+    fn equal_f32( a: f32, b: f32 ) -> bool {
+        if a - 1e-3 < b && a + 1e-3 > b {
+            true
+        } else {
+            false
+        }
+    }
+
+    let count = 20;
+    
+    let va = (0..count).map(|x| (x) ).collect::<Vec<i32>>();
+    let vb = [100, -50, 75, 45, 15, -10];
+    
+    let mut t1 : NodePtr<i32,i32> = NodePtr::new();
+    let mut t2 : NodePtr<i32,i32> = NodePtr::new();
+    
+    for i in va.iter() {
+        t1 = t1.insert( *i, *i ).0;
+    }
+
+    for i in vb.iter() {
+        t2 = t2.insert( *i, *i ).0;
+    }
+    
+    {
+        let v = t1.query_key_range( -10_000_000, 10_000_000 ).iter()
+            .map(|x| x.key()).collect::<Vec<_>>();
+        
+        assert_eq!( v.len(), va.len() );
+
+        va.iter().zip( v.iter() )
+            .for_each(|(a,b)| assert_eq!( *a, *b ) );
+    }
+
+    {
+        let v = t2.query_key_range( -10_000_000, 10_000_000 ).iter()
+            .map(|x| x.key()).collect::<Vec<_>>();
+        
+        assert_eq!( v.len(), vb.len() );
+
+        let mut vb_expected = vb.clone();
+        vb_expected.sort();
+        
+        vb_expected.iter().zip( v.iter() )
+            .for_each(|(a,b)| assert_eq!( *a, *b ) );
+    }
+
+    let ck1 = Local::now();
+   
+    let t3 = t2.intersect(t1);
+    
+    let ck2 = Local::now();
+    
+    {
+        let v = t3.query_key_range( -10_000_000, 10_000_000 ).iter().
+            map(|x| x.key()).collect::<Vec<_>>();
+        
+        let mut expected = vb.iter().cloned().filter(|x| *x >= 0 && *x < 20).collect::<Vec<_>>();
+        expected.sort();
+        
+        assert_eq!( v.len(), expected.len() );
+
+        expected.iter().zip( v.iter() )
+            .for_each(|(a,b)| assert_eq!( *a, *b ) );
+    }
+
+    let t_elapse = ck2.signed_duration_since(ck1).num_microseconds().unwrap() as f64;
+    println!("intersect of sizes({},{}): {} us", count, count, t_elapse );
     
 }

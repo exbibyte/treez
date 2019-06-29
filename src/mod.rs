@@ -1,7 +1,5 @@
 pub mod seg;
 pub mod rb;
-pub mod autograd;
-pub mod nn;
 pub mod prefix;
 
 // #[path = "sarsa.rs"]
