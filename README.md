@@ -283,6 +283,8 @@ fn main() {
 ```
 
 ### treap
+#### implementation: insert, search, query_key_range( [low,high) ), split_by_key, merge_contiguous( a.keys < b.keys ), union, intersect, remove_by_key, remove_by_key_range( [low,high) )
+#### todo: optimize
 
 ```rust
     let mut t = treap::NodePtr::new();
@@ -339,5 +341,15 @@ fn main() {
     }
 
     let t5 = t3.union(t4);
-    
+	
+	let vc = (50..70).map(|x| (x*2) ).collect::<Vec<i32>>();
+
+    let mut t6 = treap::NodePtr::new();
+
+    for i in vc.iter() {
+        t6 = t6.insert( (*i as f32), *i ).0;
+    }
+	
+	let t7 = t5.intersect( t6 );
+	
 ```

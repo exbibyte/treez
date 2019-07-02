@@ -820,15 +820,6 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
                     _ => {
                         a.link_left(&None);
                     },
-                    // (Some(x),None) => {
-                    //     a.link_left(&None);
-                    // },
-                    // (None,Some(y)) => {
-                    //     a.link_left(&None);
-                    // },
-                    // (None,None) => {
-                    //     a.link_left(&None);
-                    // },
                 }
 
                 match (&r,&r2){
@@ -845,15 +836,6 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
                     _ => {
                         a.link_right(&None);
                     },
-                    // (Some(x),None) => {
-                    //     a.link_right(&None);
-                    // },
-                    // (None,Some(y)) => {
-                    //     a.link_right(&None);
-                    // },
-                    // (None,None) => {
-                    //     a.link_right(&None);
-                    // },
                 }
 
                 a
@@ -873,15 +855,6 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
                    _ => {
                        None
                    },
-                    // (Some(x),None) => {
-                    //     None
-                    // },
-                    // (None,Some(y)) => {
-                    //     None
-                    // },
-                    // (None,None) => {
-                    //     None
-                    // },
                };
                 
                 let right_branch = match (&r,&r2){
@@ -897,15 +870,6 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
                     _ => {
                         None
                     },
-                    // (Some(x),None) => {
-                    //     None
-                    // },
-                    // (None,Some(y)) => {
-                    //     None
-                    // },
-                    // (None,None) => {
-                    //     None
-                    // },
                 };
 
                 match (left_branch,right_branch) {
