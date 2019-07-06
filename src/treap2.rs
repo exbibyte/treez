@@ -5,6 +5,7 @@ use std::rc::{Rc,Weak};
 use std::ops::{Deref,DerefMut};
 use std::cell::{RefCell,RefMut};
 use std::fmt::Debug;
+use std::f32;
 
 extern crate rand;
 use self::rand::Rng;
@@ -57,7 +58,7 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
     ///helper function
     fn gen_priority_random() -> f32 {
         let mut rng = rand::thread_rng();
-        let r = rng.gen_range( -1e-20, 1e20 );
+        let r = rng.gen_range( -1e30_f32, 1e30_f32 );
         r
     }
 
@@ -465,7 +466,7 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
         let mut n = self.get_root();
         
         {
-            self.0.borrow_mut().prio = 1e30;
+            self.0.borrow_mut().prio = f32::INFINITY;
             
             //fix downward pass
             match self.fixdown_priority() {
@@ -644,7 +645,7 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
 
         //insert node with a sentil lowest priority so it's at the root
 
-        let ( root, exists ) = self.insert_with_priority( k, Default::default(), -1e30 );
+        let ( root, exists ) = self.insert_with_priority( k, Default::default(), f32::NEG_INFINITY );
 
         //remove the root node and return 2 child nodes
         let l = root.child_l();
@@ -689,7 +690,7 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
             
             let n = NodePtr::new();
             {
-                n.0.borrow_mut().prio = 1e30;
+                n.0.borrow_mut().prio = f32::INFINITY;
             }
             
             n.link_left( &Some(self.clone()) );
