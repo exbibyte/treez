@@ -1,6 +1,6 @@
 [package]
 name = "treez"
-version = "1.1.0"
+version = "1.1.1"
 authors = ["Yuan Liu <yuan6liu@gmail.com>"]
 description = "A collection of useful tree data structures."
 repository = "https://github.com/clearlycloudy/treez/"

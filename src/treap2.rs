@@ -1,3 +1,7 @@
+//! treap implementation based from various references such as:
+//! http://e-maxx.ru/algo/treap
+//! Fast Set Operations Using Treaps: http://www.cs.cmu.edu/afs/cs.cmu.edu/project/scandal/public/papers/treaps-spaa98.html
+
 use std::cmp::{self,Ordering};
 use std::mem;
 use std::collections::{HashSet,HashMap};
@@ -355,6 +359,7 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
     }
 
     /// perform rotations upward to preserve heap property using priority
+    /// this moves a node with low priority upward
     /// return a node if it is the new root
     pub fn fixup_priority( & self ) -> Option<Self> {
         let prio = self.0.borrow().prio;
@@ -395,6 +400,7 @@ impl <K,T> NodePtr<K,T> where T: Clone + Default + Debug, K: PartialOrd + Clone 
     }
 
     /// fixes the priority in a downward pass
+    /// this moves a node with high priority downward 
     /// return a node if it is the new root
     pub fn fixdown_priority( & self ) -> Option<Self> {
         let mut x = self.clone();
