@@ -287,8 +287,14 @@ impl < K, V > TreeRb< K, V > where K: Ord + Default + Bounded + Clone, V : Defau
         false
     }
 
+    /// calls shrink to fit on all vectors
+    pub fn shrink_to_fit(&mut self) {
+        self._buf.shrink_to_fit();
+        self._freelist.shrink_to_fit();
+    }
+
     /// returns the biggest value l<=k which is in the tree
-    pub fn predecessor( & self, key: K ) -> Option<&V> {
+    pub fn predecessor(&self, key: K ) -> Option<&V> {
         let mut x = self._root;
         let mut curr_pred = None;
         while x != -1 {
