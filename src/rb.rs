@@ -310,6 +310,24 @@ impl < K, V > TreeRb< K, V > where K: Ord + Default + Bounded + Clone, V : Defau
         }
         curr_pred
     }
+
+    /// returns the smallest value l>=k which is in the tree
+    pub fn successor(&self, key: K ) -> Option<&V> {
+        let mut x = self._root;
+        let mut curr_pred = None;
+        while x != -1 {
+            let k = & self._buf[x as usize]._key;
+            if &key == k {
+                return Some(&self._buf[x as usize]._val);
+            } else if &key < k {
+                curr_pred = Some(&self._buf[x as usize]._val);
+                x = self._buf[x as usize]._child_l;
+            } else {
+                x = self._buf[x as usize]._child_r;         
+            }
+        }
+        curr_pred
+    }
     
     ///get the value of the item with the input key, otherwise return None
     pub fn get( & self, key: K ) -> Option< V > {
