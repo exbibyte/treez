@@ -38,6 +38,7 @@ impl < K, V > Default for Node< K, V > where K: Ord + Default + Bounded + Clone,
         }
     }
 }
+#[derive(Clone)]
 ///vector indexed red-black tree implementation
 pub struct TreeRb< K, V > where K: Ord + Default + Bounded + Clone, V : Default + Clone {
     _root: isize,
