@@ -293,6 +293,21 @@ impl < K, V > TreeRb< K, V > where K: Ord + Default + Bounded + Clone, V : Defau
         self._freelist.shrink_to_fit();
     }
 
+    /// creates a new rbtree with buf.capacity = capacity
+    pub fn with_capacity(capacity: usize) -> Self{
+        TreeRb {
+            _root: -1isize,
+            _buf: Vec::with_capacity(capacity),
+            _sentinil: Node {
+                _colour: Colour::Black,
+                _parent: -1isize,
+                ..Default::default()
+            },
+            _freelist: vec![],
+            _leaf_remove_index: -1isize,
+        }
+    }
+
     /// returns the biggest value l<=k which is in the tree
     pub fn predecessor(&self, key: K ) -> Option<&V> {
         let mut x = self._root;
