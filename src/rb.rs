@@ -38,6 +38,7 @@ impl < K, V > Default for Node< K, V > where K: Ord + Default + Bounded + Clone,
         }
     }
 }
+#[derive(Clone)]
 ///vector indexed red-black tree implementation
 pub struct TreeRb< K, V > where K: Ord + Default + Bounded + Clone, V : Default + Clone {
     _root: isize,
@@ -286,6 +287,64 @@ impl < K, V > TreeRb< K, V > where K: Ord + Default + Bounded + Clone, V : Defau
         }
         false
     }
+
+    /// calls shrink to fit on all vectors
+    pub fn shrink_to_fit(&mut self) {
+        self._buf.shrink_to_fit();
+        self._freelist.shrink_to_fit();
+    }
+
+    /// creates a new rbtree with buf.capacity = capacity
+    pub fn with_capacity(capacity: usize) -> Self{
+        TreeRb {
+            _root: -1isize,
+            _buf: Vec::with_capacity(capacity),
+            _sentinil: Node {
+                _colour: Colour::Black,
+                _parent: -1isize,
+                ..Default::default()
+            },
+            _freelist: vec![],
+            _leaf_remove_index: -1isize,
+        }
+    }
+
+    /// returns the biggest value l<=k which is in the tree
+    pub fn predecessor(&self, key: K ) -> Option<&V> {
+        let mut x = self._root;
+        let mut curr_pred = None;
+        while x != -1 {
+            let k = & self._buf[x as usize]._key;
+            if &key == k {
+                return Some(&self._buf[x as usize]._val);
+            } else if &key < k {
+                x = self._buf[x as usize]._child_l;
+            } else {
+                curr_pred = Some(&self._buf[x as usize]._val);
+                x = self._buf[x as usize]._child_r;         
+            }
+        }
+        curr_pred
+    }
+
+    /// returns the smallest value l>=k which is in the tree
+    pub fn successor(&self, key: K ) -> Option<&V> {
+        let mut x = self._root;
+        let mut curr_pred = None;
+        while x != -1 {
+            let k = & self._buf[x as usize]._key;
+            if &key == k {
+                return Some(&self._buf[x as usize]._val);
+            } else if &key < k {
+                curr_pred = Some(&self._buf[x as usize]._val);
+                x = self._buf[x as usize]._child_l;
+            } else {
+                x = self._buf[x as usize]._child_r;         
+            }
+        }
+        curr_pred
+    }
+    
     ///get the value of the item with the input key, otherwise return None
     pub fn get( & self, key: K ) -> Option< V > {
         let mut x = self._root;
