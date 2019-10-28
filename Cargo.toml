@@ -1,6 +1,6 @@
 [package]
 name = "treez"
-version = "1.1.1"
+version = "1.2.0"
 authors = ["Yuan Liu <yuan6liu@gmail.com>"]
 description = "A collection of useful tree data structures."
 repository = "https://github.com/clearlycloudy/treez/"
@@ -15,6 +15,13 @@ chrono = "0.4.0"
 num = "0.1.41"
 mazth = "0.0.0"
 crossbeam = "0.4.1"
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "bench_rb"
+harness = false
 
 [lib]
 name = "treez"
