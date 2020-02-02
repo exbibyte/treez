@@ -3,6 +3,7 @@
 ## A collection of useful data structures and algorithms
 
 ### current implementations:
+#### monotone queue
 #### segment tree
 #### rb tree
 #### indexed tree
@@ -10,17 +11,37 @@
 #### disjoint union set
 #### strongly connected components
 #### backtracking
-#### sarsa Q-Learning
+#### basic SARSA RL with eligeability trace
 
-### segment tree  
-#### implementation: array based
-
-#### todo: generic type
-
-#### notes: for static use after initialization
-
+### monotone queue
 ```rust
+	using treez::queue_monotone::QueueMonotone;
+	
+    let mut q : QueueMonotone<i32> = QueueMonotone::new();
+    
+    const window : usize = 20;
 
+    q.set_auto_len(window);
+    
+    let mut rng = rand::thread_rng();
+
+    let arr : Vec<i32> = (0..100).map(|x| rng.gen_range(-1000,1000)).collect();
+    
+    for (i,v) in arr.iter().enumerate() {
+        
+        q.push(*v);
+       
+        let bound_left = std::cmp::max((i+1).saturating_sub(window),0);
+
+        let m = *q.max().expect("max");
+        
+        assert_eq!(m, *arr[bound_left..=i].iter().max().unwrap());
+    }
+```
+
+### segment tree
+#### notes: for static use after initialization
+```rust
 let mut segments = vec![];
 for i in 0..10 {
     let n = (i*5, 5*i+5, i); //(left_bound,right_bound,segment_id); inclusive bounds
@@ -36,16 +57,8 @@ assert!( check.intersection(&query_segs).count() == check.len() );
 
 ```
 
-### red black tree  
-#### implementation: array based, threshold compaction, minimal heap allocation  
-
-#### todo: optimize internal representation and operations  
-
-#### notes: comparable performance to BTreeMap  
-
+### red black tree
 ```rust
-
-
 let mut t : treez::rb::TreeRb< isize, isize > = treez::rb::TreeRb::new();
 for i in 0..nums.len() {
     let r = nums[i];
@@ -60,12 +73,9 @@ for i in 0..nums.len() {
 ```
 
 ### prefix sum tree
-#### implementation: array based  
-
 #### todo: support generic commutative operation
 
 ```rust
-
 let mut t = treez::prefix::TreePrefix< isize >::init(16);
 t.set(0, 5);
 t.set(1, 7);
@@ -85,8 +95,80 @@ assert_eq!( t.get_interval_start( 2 ), 15isize );
 assert_eq!( t.get_interval_start( 11 ), 19isize );
 ```
 
+### treap
+#### implementation: insert, search, query_key_range( [low,high) ), split_by_key, merge_contiguous( a.keys < b.keys ), union, intersect, remove_by_key, remove_by_key_range( [low,high) )
+#### todo: optimize
+
+```rust
+    let mut t = treap::NodePtr::new();
+    
+    {
+        let v = t.query_key_range( -100., 100. ).iter().
+            map(|x| x.key()).collect::<Vec<_>>();
+        
+        assert_eq!( v.len(), 0 );
+    }
+
+    let items = vec![ 56, -45, 1, 6, 9, -30, 7, -9, 12, 77, -25 ];
+    for i in items.iter() {
+        t = t.insert( *i as f32, *i ).0;
+    }
+    
+    t = t.remove_by_key_range( 5., 10. );
+    
+    let mut expected = items.iter().cloned().filter(|x| *x < 5 || *x >= 10 ).collect::<Vec<_>>();
+    expected.sort();
+
+    {
+        let v = t.query_key_range( -100., 100. ).iter().
+            map(|x| x.key()).collect::<Vec<_>>();
+        
+        assert_eq!( v.len(), expected.len() );
+
+        expected.iter().zip( v.iter() )
+            .for_each(|(a,b)| assert!(equal_f32( (*a as f32), *b ) ) );
+    }
+
+    let ((t1, t2), node_with_key_0 ) = t.split_by_key(0.);
+	
+	assert!( node_with_key_0.is_some() );
+	
+    let t3 = t1.merge_contiguous( t2 );
+
+    {
+        let v = t3.query_key_range( -100., 100. ).iter().
+            map(|x| x.key()).collect::<Vec<_>>();
+        
+        assert_eq!( v.len(), expected.len() );
+
+        expected.iter().zip( v.iter() )
+            .for_each(|(a,b)| assert!(equal_f32( (*a as f32), *b ) ) );
+    }
+    
+    let va = (100..200).map(|x| (x*2) ).collect::<Vec<i32>>();
+    
+    let mut t4 = treap::NodePtr::new();
+
+    for i in va.iter() {
+        t4 = t4.insert( (*i as f32), *i ).0;
+    }
+
+    let t5 = t3.union(t4);
+	
+	let vc = (50..70).map(|x| (x*2) ).collect::<Vec<i32>>();
+
+    let mut t6 = treap::NodePtr::new();
+
+    for i in vc.iter() {
+        t6 = t6.insert( (*i as f32), *i ).0;
+    }
+	
+	let t7 = t5.intersect( t6 );
+	
+```
+
 ### sarsa policy search
-#### implementation: using eligibility trace, configurable reward decay and rollout factors, SARSA, basic thread parallel implementation  
+#### implementation: using eligibility trace, configurable reward decay and rollout factors, SARSA, basic thread parallel implementation
 
 #### notes: This is an implementation attempt based on readings from various sources such as Reinforcement Learning by Sutton et al.
 
@@ -280,76 +362,4 @@ fn main() {
         print!( "\n" );
     }
 }
-```
-
-### treap
-#### implementation: insert, search, query_key_range( [low,high) ), split_by_key, merge_contiguous( a.keys < b.keys ), union, intersect, remove_by_key, remove_by_key_range( [low,high) )
-#### todo: optimize
-
-```rust
-    let mut t = treap::NodePtr::new();
-    
-    {
-        let v = t.query_key_range( -100., 100. ).iter().
-            map(|x| x.key()).collect::<Vec<_>>();
-        
-        assert_eq!( v.len(), 0 );
-    }
-
-    let items = vec![ 56, -45, 1, 6, 9, -30, 7, -9, 12, 77, -25 ];
-    for i in items.iter() {
-        t = t.insert( *i as f32, *i ).0;
-    }
-    
-    t = t.remove_by_key_range( 5., 10. );
-    
-    let mut expected = items.iter().cloned().filter(|x| *x < 5 || *x >= 10 ).collect::<Vec<_>>();
-    expected.sort();
-
-    {
-        let v = t.query_key_range( -100., 100. ).iter().
-            map(|x| x.key()).collect::<Vec<_>>();
-        
-        assert_eq!( v.len(), expected.len() );
-
-        expected.iter().zip( v.iter() )
-            .for_each(|(a,b)| assert!(equal_f32( (*a as f32), *b ) ) );
-    }
-
-    let ((t1, t2), node_with_key_0 ) = t.split_by_key(0.);
-	
-	assert!( node_with_key_0.is_some() );
-	
-    let t3 = t1.merge_contiguous( t2 );
-
-    {
-        let v = t3.query_key_range( -100., 100. ).iter().
-            map(|x| x.key()).collect::<Vec<_>>();
-        
-        assert_eq!( v.len(), expected.len() );
-
-        expected.iter().zip( v.iter() )
-            .for_each(|(a,b)| assert!(equal_f32( (*a as f32), *b ) ) );
-    }
-    
-    let va = (100..200).map(|x| (x*2) ).collect::<Vec<i32>>();
-    
-    let mut t4 = treap::NodePtr::new();
-
-    for i in va.iter() {
-        t4 = t4.insert( (*i as f32), *i ).0;
-    }
-
-    let t5 = t3.union(t4);
-	
-	let vc = (50..70).map(|x| (x*2) ).collect::<Vec<i32>>();
-
-    let mut t6 = treap::NodePtr::new();
-
-    for i in vc.iter() {
-        t6 = t6.insert( (*i as f32), *i ).0;
-    }
-	
-	let t7 = t5.intersect( t6 );
-	
 ```

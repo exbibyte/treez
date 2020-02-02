@@ -19,3 +19,5 @@ pub mod backtrack;
 
 #[path = "treap2.rs"]
 pub mod treap;
+
+pub mod queue_monotone;
