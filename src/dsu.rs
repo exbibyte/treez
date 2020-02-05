@@ -2,7 +2,7 @@
 pub struct S {
     pub id: usize,
     pub parent: usize,
-    pub ssize: u32,
+    pub ssize: usize,
 }
 
 impl S {
@@ -17,6 +17,22 @@ impl Dsu {
 
     pub fn init( len: usize ) -> Self {
         Dsu( (0..len).map(|x| S::init(x) ).collect::<Vec<_>>() )
+    }
+
+    pub fn insert_new(& mut self, count: usize) -> usize {
+        let l = self.0.len();
+        self.0.push(S::init(l));
+        l
+    }
+
+    pub fn insert_new_count(& mut self, count: usize) -> Vec<usize> {
+        let mut ret = vec![];
+        let l = self.0.len();
+        for i in l..l+count {
+            self.0.push(S::init(i));
+            ret.push(i);
+        }
+        ret
     }
     
     pub fn compress_path( & mut self, mut idx: usize ) -> usize {
@@ -56,8 +72,28 @@ impl Dsu {
         }
     }
 
+    pub fn get_set( & self, id: usize ) -> Option<usize> {
+        if id >= self.0.len() {
+            None
+        } else {
+            Some(self.0[id].parent)
+        }
+    }
+    
     pub fn get_sets_repr( & self ) -> Vec<usize>{
         self.0.iter().enumerate().filter(|x| x.1.id == x.1.parent ).map(|x| x.0).collect()
+    }
+
+    pub fn get_sets_len( & self ) -> usize {
+        self.0.iter().filter(|x| x.id == x.parent ).count()
+    }
+
+    pub fn get_set_size( & self, id: usize ) -> usize {
+        if id > self.0.len() {
+            0
+        } else {
+            self.0[id].ssize
+        }
     }
 }
 
@@ -90,4 +126,13 @@ fn test_dsu() {
     v.merge(0,5);
 
     assert_eq!( v.get_sets_repr().len(), 1 );
+
+    let _ids = v.insert_new_count(5);
+    assert_eq!( v.get_sets_repr().len(), 6 );
+
+    let r = *v.get_sets_repr().iter().rev().nth(0).unwrap();
+    for i in v.get_sets_repr() {
+        v.merge( i, r );
+    }
+    assert_eq!( v.get_sets_len(), 1 );
 }

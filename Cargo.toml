@@ -1,12 +1,12 @@
 [package]
 name = "treez"
-version = "1.2.1"
+version = "1.3.0"
 authors = ["Yuan Liu <yuan6liu@gmail.com>"]
 description = "A collection of useful tree data structures."
 repository = "https://github.com/clearlycloudy/treez/"
 keywords = [ "segment", "red-black", "sarsa", "mtcs", "treap" ]
 license = "BSD-2-Clause"
-documentation = "https://docs.rs/treez/1.1.0/treez/"
+documentation = "https://docs.rs/treez/1.3.0/treez/"
 readme = "README.md"
 
 [dependencies]
