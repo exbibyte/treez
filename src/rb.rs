@@ -922,7 +922,6 @@ where
     }
 }
 
-
 #[cfg(test)]
 extern crate chrono;
 #[cfg(test)]
@@ -1281,4 +1280,3 @@ fn test_rb_insert_remove_rand() {
 //         println!("insertion: count: {}, time: {}s, rate: {:.6} removes/s, {:.6} us/remove", nums.len(), t_remove, nums.len() as f64 * 1000000f64 / t_remove, t_remove / nums.len() as f64 );
 //     }
 // }
-

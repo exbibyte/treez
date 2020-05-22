@@ -7,36 +7,46 @@ extern crate rand;
 use self::rand::distributions::{Distribution, Uniform};
 
 /// find first index where arr[idx] > v; assume arr is sorted
-pub fn upper_bound<T>(arr: &[T], v: &T) -> usize where T: cmp::Ord {
+pub fn upper_bound<T>(arr: &[T], v: &T) -> usize
+where
+    T: cmp::Ord,
+{
     let mut l = 0;
     let mut r = arr.len();
-    while l<r {
-        let m = (l+r)/2;
-        let vm = & arr[m];
+    while l < r {
+        let m = (l + r) / 2;
+        let vm = &arr[m];
         match vm.cmp(v) {
-            cmp::Ordering::Less => { l = m+1; },
-            cmp::Ordering::Greater => { r = m; },
-            cmp::Ordering::Equal => { l = m+1; }
+            cmp::Ordering::Less => {
+                l = m + 1;
+            }
+            cmp::Ordering::Greater => {
+                r = m;
+            }
+            cmp::Ordering::Equal => {
+                l = m + 1;
+            }
         }
     }
-    assert_eq!(l,r);
+    assert_eq!(l, r);
     l
 }
 
 #[test]
 fn test_upper_bound() {
-
     let distr = Uniform::from(0..20);
     let mut rng = rand::thread_rng();
-    
-    let mut arr = (0..1000).map(|_| distr.sample(&mut rng) ).collect::<Vec<_>>();
+
+    let mut arr = (0..1000)
+        .map(|_| distr.sample(&mut rng))
+        .collect::<Vec<_>>();
     arr.sort();
     let val = distr.sample(&mut rng);
-    
+
     let idx = upper_bound(&arr[..], &val);
 
     let mut check = 0;
-    for (i,v) in arr.iter().enumerate(){
+    for (i, v) in arr.iter().enumerate() {
         check = i;
         if *v > val {
             break;
@@ -47,14 +57,15 @@ fn test_upper_bound() {
 
 #[test]
 fn test_upper_bound_end() {
-
     let distr = Uniform::from(0..20);
     let mut rng = rand::thread_rng();
-    
-    let mut arr = (0..1000).map(|_| distr.sample(&mut rng) ).collect::<Vec<_>>();
+
+    let mut arr = (0..1000)
+        .map(|_| distr.sample(&mut rng))
+        .collect::<Vec<_>>();
     arr.sort();
     let val = 99;
-    
+
     let idx = upper_bound(&arr[..], &val);
 
     assert_eq!(arr.len(), idx);

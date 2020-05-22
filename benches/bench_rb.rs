@@ -39,7 +39,7 @@ fn benchmark_rb(c: &mut Criterion) {
         b.iter(|| stress_insert_remove(&mut t, black_box(&nums[..])))
     });
 
-    assert_eq!( t.len(), 0 );
+    assert_eq!(t.len(), 0);
 }
 
 criterion_group!(benches, benchmark_rb);
