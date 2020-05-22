@@ -42,6 +42,7 @@ impl Dsu {
         let mut buf = vec![];
         
         while self.0[idx].parent != self.0[idx].id {
+            self.0[idx].ssize = 1;
             buf.push(idx);
             idx = self.0[idx].parent;
         }
@@ -67,6 +68,7 @@ impl Dsu {
                     (b_parent, a_parent)
                 };
                 self.0[big].ssize += self.0[small].ssize;
+                self.0[small].ssize = 1;
                 self.0[small].parent = big;
             }
         }
