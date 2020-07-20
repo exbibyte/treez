@@ -1,6 +1,6 @@
 [package]
 name = "treez"
-version = "1.4.1"
+version = "1.5.0"
 authors = ["Yuan Liu <yuan6liu@gmail.com>"]
 description = "A collection of useful data structures."
 repository = "https://github.com/clearlycloudy/treez/"
@@ -10,7 +10,7 @@ documentation = "https://docs.rs/treez/1.4.1/treez/"
 readme = "README.md"
 
 [dependencies]
-rand = "0.5.5"
+rand = "0.7.3"
 chrono = "0.4.0"
 num = "0.1.41"
 mazth = "0.0.0"

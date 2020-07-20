@@ -1,3 +1,5 @@
+extern crate rand;
+
 pub mod seg;
 
 pub mod rb;

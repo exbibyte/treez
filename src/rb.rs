@@ -930,7 +930,7 @@ extern crate rand;
 #[cfg(test)]
 use self::chrono::prelude::*;
 #[cfg(test)]
-use self::rand::distributions::{IndependentSample, Range};
+use rand::distributions::{Distribution, Uniform};
 #[cfg(test)]
 use self::rand::Rng;
 #[cfg(test)]
@@ -1138,12 +1138,12 @@ fn test_rb_remove_internal_black_2() {
 fn test_rb_insert_remove_rand() {
     let mut t: TreeRb<isize, isize> = TreeRb::new();
 
-    let bounds = Range::new(-300, 300);
+    let bounds = Uniform::from(-300..301);
     let mut rng = rand::thread_rng();
 
     let mut hm = HashMap::new();
     for i in 0..10000 {
-        let r = bounds.ind_sample(&mut rng);
+        let r = bounds.sample(&mut rng);
         t.insert(r, i);
         hm.insert(r, i);
     }
@@ -1153,7 +1153,7 @@ fn test_rb_insert_remove_rand() {
     assert!(t.len() == hm.len());
 
     for _ in 0..30000 {
-        let r = bounds.ind_sample(&mut rng);
+        let r = bounds.sample(&mut rng);
         // println!("removing: {}", r );
         match hm.remove(&r) {
             Some(v_check) => {
