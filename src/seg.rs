@@ -10,9 +10,12 @@ use std::fmt::Debug;
 use std::ops::{Add, Mul};
 
 #[derive(Debug, Clone, Copy)]
-enum Change {
-    Abs,
-    Rel,
+enum Change<T>
+where
+    T: Add<Output = T> + Mul<i64, Output = T> + Default + Debug + Clone,
+{
+    Abs(T),
+    Rel(T),
 }
 
 #[derive(Debug, Clone)]
@@ -22,11 +25,10 @@ where
 {
     l: i64,
     r: i64,
-    v: T,
-    s: T, //lazy value
+    s: T,
     left: Option<Box<N<T>>>,
     right: Option<Box<N<T>>>,
-    mark: Option<Change>,
+    mark: Option<Change<T>>, //lazy
 }
 
 impl<T> N<T>
@@ -37,7 +39,6 @@ where
         Self {
             l: l,
             r: r,
-            v: Default::default(),
             s: Default::default(),
             left: None,
             right: None,
@@ -45,42 +46,43 @@ where
         }
     }
     fn set_lazy_abs(&mut self, val: T) {
-        self.v = val;
-        self.mark = Some(Change::Abs);
+        self.mark = Some(Change::Abs(val.clone()));
+        self.s = val;
     }
     fn set_lazy_rel(&mut self, val: T) {
         match &self.mark {
-            Some(x) => match x {
-                Change::Abs => {
-                    self.push_down_abs();
-                    assert!(self.mark.is_none());
-                }
-                _ => {}
-            },
+            Some(Change::Abs(_)) => {
+                self.push_down_abs();
+                assert!(self.mark.is_none());
+            }
             _ => {}
         }
-        self.v = self.v.clone() + val;
-        self.mark = Some(Change::Rel);
+        match &mut self.mark {
+            Some(Change::Rel(ref mut v)) => {
+                *v = v.clone() + val;
+            }
+            _ => {
+                self.mark = Some(Change::Rel(val));
+            }
+        }
     }
     pub fn range_sum(&self) -> T {
         match &self.mark {
-            Some(x) => match x {
-                Change::Abs => self.v.clone() * (self.r - self.l),
-                _ => self.s.clone() + self.v.clone() * (self.r - self.l),
-            },
+            Some(Change::Abs(v)) => v.clone() * (self.r - self.l),
+            Some(Change::Rel(v)) => self.s.clone() + v.clone() * (self.r - self.l),
             _ => self.s.clone(),
         }
     }
     fn extend(&mut self) {
+        if self.l + 1 >= self.r {
+            return;
+        }
         self.extend_left();
         self.extend_right();
     }
     fn extend_left(&mut self) {
-        if self.l + 1 >= self.r {
-            return;
-        }
         let m = (self.l + self.r) / 2;
-        if self.l < m {
+        if self.l < self.r && self.l < m {
             match self.left {
                 None => {
                     self.left = Some(Box::new(N::new(self.l, m)));
@@ -90,11 +92,8 @@ where
         }
     }
     fn extend_right(&mut self) {
-        if self.l + 1 >= self.r {
-            return;
-        }
         let m = (self.l + self.r) / 2;
-        if m < self.r {
+        if self.l < self.r && m < self.r {
             match self.right {
                 None => {
                     self.right = Some(Box::new(N::new(m, self.r)));
@@ -104,49 +103,47 @@ where
         }
     }
     fn push_down_abs(&mut self) {
-        match &self.mark {
-            Some(x) => match x {
-                Change::Abs => {
-                    self.mark = None;
-                    self.extend();
-                    if let Some(ref mut y) = &mut self.left {
-                        y.set_lazy_abs(self.v.clone());
-                    }
-                    if let Some(ref mut y) = &mut self.right {
-                        y.set_lazy_abs(self.v.clone());
-                    }
-                    self.s = self.v.clone() * (self.r - self.l);
-                    self.v = Default::default();
+        use std::mem::swap;
+        match &mut self.mark {
+            Some(Change::Abs(ref mut a)) => {
+                let mut x = Default::default();
+                swap(&mut x, a);
+                self.mark = None;
+                self.extend();
+                if let Some(ref mut y) = &mut self.left {
+                    y.set_lazy_abs(x.clone());
                 }
-                _ => {}
-            },
+                if let Some(ref mut y) = &mut self.right {
+                    y.set_lazy_abs(x.clone());
+                }
+                self.s = x * (self.r - self.l);
+            }
             _ => {}
         }
     }
     fn push_down_rel(&mut self) {
-        match &self.mark {
-            Some(x) => match x {
-                Change::Rel => {
-                    self.mark = None;
-                    self.extend();
-                    if let Some(ref mut y) = &mut self.left {
-                        y.set_lazy_rel(self.v.clone());
-                    }
-                    if let Some(ref mut y) = &mut self.right {
-                        y.set_lazy_rel(self.v.clone());
-                    }
-                    self.s = self.s.clone() + self.v.clone() * (self.r - self.l);
-                    self.v = Default::default();
+        use std::mem::swap;
+        match &mut self.mark {
+            Some(Change::Rel(ref mut a)) => {
+                let mut x = Default::default();
+                swap(&mut x, a);
+                self.mark = None;
+                self.extend();
+                if let Some(ref mut y) = &mut self.left {
+                    y.set_lazy_rel(x.clone());
                 }
-                _ => {}
-            },
+                if let Some(ref mut y) = &mut self.right {
+                    y.set_lazy_rel(x.clone());
+                }
+                self.s = self.s.clone() + x * (self.r - self.l);
+            }
             _ => {}
         }
     }
     fn push_down(&mut self) {
         if let Some(ref x) = &self.mark {
             match x {
-                Change::Abs => {
+                Change::Abs(_) => {
                     self.push_down_abs();
                 }
                 _ => {
@@ -220,12 +217,10 @@ where
         }
     }
     pub fn query_sum(&mut self, ll: i64, rr: i64) -> T {
-        if ll >= rr {
+        if ll >= rr || max(ll, self.l) >= min(rr, self.r) {
             Default::default()
         } else if ll <= self.l && self.r <= rr {
             self.range_sum()
-        } else if max(ll, self.l) >= min(rr, self.r) {
-            Default::default()
         } else {
             self.push_down();
             let mut ret: T = Default::default();
@@ -251,8 +246,8 @@ where
             count += x.dbg(d_parent + 1, depths);
         }
         println!(
-            "[{},{}), mark: {:?}, v: {:?}, s: {:?}",
-            self.l, self.r, self.mark, self.v, self.s
+            "[{},{}), mark: {:?}, s: {:?}",
+            self.l, self.r, self.mark, self.s
         );
         if let Some(ref x) = &self.right {
             count += x.dbg(d_parent + 1, depths);
