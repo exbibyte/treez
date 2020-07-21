@@ -7,7 +7,7 @@ use std::cmp::*;
 #[cfg(test)]
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::ops::{Add};
+use std::ops::Add;
 
 pub trait Min {
     fn min() -> Self;
@@ -20,7 +20,7 @@ pub trait Max {
 #[derive(Debug, Clone, Copy)]
 enum Change<T>
 where
-    T: Add<Output=T> + Ord  + Debug + Clone + Min,
+    T: Add<Output = T> + Ord + Debug + Clone + Min,
 {
     Abs(T),
     Rel(T),
@@ -29,7 +29,7 @@ where
 #[derive(Debug, Clone)]
 struct N<T>
 where
-    T: Add<Output=T> + Ord  + Debug + Clone + Min,
+    T: Add<Output = T> + Ord + Debug + Clone + Min,
 {
     l: i64,
     r: i64,
@@ -41,7 +41,7 @@ where
 
 impl<T> N<T>
 where
-    T: Add<Output=T> + Ord  + Debug + Clone + Min,
+    T: Add<Output = T> + Ord + Debug + Clone + Min,
 {
     pub fn new(l: i64, r: i64) -> Self {
         Self {
@@ -112,41 +112,41 @@ where
         }
     }
     fn push_down_abs(&mut self) {
-        match & mut self.mark {
-            Some(Change::Abs(_)) => {
-                match self.mark.take(){
-                    Some(Change::Abs(x)) => {
-                        self.extend();
-                        if let Some(ref mut y) = &mut self.left {
-                            y.set_lazy_abs(x.clone());
-                        }
-                        if let Some(ref mut y) = &mut self.right {
-                            y.set_lazy_abs(x.clone());
-                        }
+        match &mut self.mark {
+            Some(Change::Abs(_)) => match self.mark.take() {
+                Some(Change::Abs(x)) => {
+                    self.extend();
+                    if let Some(ref mut y) = &mut self.left {
+                        y.set_lazy_abs(x.clone());
                     }
-                    _ => { panic!(); }
+                    if let Some(ref mut y) = &mut self.right {
+                        y.set_lazy_abs(x.clone());
+                    }
                 }
-            }
+                _ => {
+                    panic!();
+                }
+            },
             _ => {}
         }
     }
     fn push_down_rel(&mut self) {
         match &mut self.mark {
-            Some(Change::Rel(_)) => {
-                match self.mark.take(){
-                    Some(Change::Rel(x)) => {
-                        self.extend();
-                        if let Some(ref mut y) = &mut self.left {
-                            y.set_lazy_rel(x.clone());
-                        }
-                        if let Some(ref mut y) = &mut self.right {
-                            y.set_lazy_rel(x.clone());
-                        }
-                        self.s = self.s.clone() + x;
+            Some(Change::Rel(_)) => match self.mark.take() {
+                Some(Change::Rel(x)) => {
+                    self.extend();
+                    if let Some(ref mut y) = &mut self.left {
+                        y.set_lazy_rel(x.clone());
                     }
-                    _ => { panic!(); }
+                    if let Some(ref mut y) = &mut self.right {
+                        y.set_lazy_rel(x.clone());
+                    }
+                    self.s = self.s.clone() + x;
                 }
-            }
+                _ => {
+                    panic!();
+                }
+            },
             _ => {}
         }
     }
@@ -186,14 +186,10 @@ where
                     _ => {}
                 }
             }
-            self.s = max(self
-                              .left
-                              .as_mut()
-                              .map_or(Min::min(), |x| x.range_val()),
-                              self
-                              .right
-                              .as_mut()
-                              .map_or(Min::min(), |x| x.range_val()));
+            self.s = max(
+                self.left.as_mut().map_or(Min::min(), |x| x.range_val()),
+                self.right.as_mut().map_or(Min::min(), |x| x.range_val()),
+            );
             debug_assert!(self.mark.is_none());
         }
     }
@@ -215,14 +211,10 @@ where
                     x.add(max(m, ll), rr, delta);
                 }
             }
-            self.s = max(self
-                              .left
-                              .as_mut()
-                              .map_or(Min::min(), |x| x.range_val()),
-                              self
-                              .right
-                              .as_mut()
-                              .map_or(Min::min(), |x| x.range_val()));
+            self.s = max(
+                self.left.as_mut().map_or(Min::min(), |x| x.range_val()),
+                self.right.as_mut().map_or(Min::min(), |x| x.range_val()),
+            );
             debug_assert!(self.mark.is_none());
         }
     }
@@ -235,15 +227,15 @@ where
             self.push_down();
             // let mut ret: T = Default::default();
             let m = (self.l + self.r) / 2;
-            let a = match & mut self.left {
-                Some(ref mut x) if ll<m => { x.query(ll, min(m, rr)) }
-                _ => { Min::min() }
+            let a = match &mut self.left {
+                Some(ref mut x) if ll < m => x.query(ll, min(m, rr)),
+                _ => Min::min(),
             };
-            let b = match & mut self.right {
-                Some(ref mut x) if m<rr => { x.query(max(m, ll), rr) }
-                _ => { Min::min() }
+            let b = match &mut self.right {
+                Some(ref mut x) if m < rr => x.query(max(m, ll), rr),
+                _ => Min::min(),
             };
-            max(a,b)
+            max(a, b)
         }
     }
     #[cfg(test)]
@@ -267,7 +259,7 @@ where
 #[derive(Debug, Clone)]
 pub struct SegMax<T>
 where
-    T: Add<Output=T> + Ord  + Debug + Clone + Min,
+    T: Add<Output = T> + Ord + Debug + Clone + Min,
 {
     lim_l: i64,
     lim_r: i64,
@@ -276,7 +268,7 @@ where
 
 impl<T> SegMax<T>
 where
-    T: Add<Output=T> + Ord  + Debug + Clone + Min,
+    T: Add<Output = T> + Ord + Debug + Clone + Min,
 {
     pub fn new(l: i64, r: i64) -> Self {
         Self {
@@ -335,10 +327,10 @@ fn test_seg() {
     let distr = Uniform::from(0..m as i64);
     let distr2 = Uniform::from(0..m as i64 + 1);
     let distr3 = Uniform::from(-10..11);
-    
+
     let mut reference = vec![0; m];
-    seg.update(0,m as i64, &0);
-    
+    seg.update(0, m as i64, &0);
+
     for _ in 0..1000 {
         if distr.sample(&mut g) % 2 == 0 {
             let mut a: i64 = distr.sample(&mut g);
@@ -363,14 +355,14 @@ fn test_seg() {
             let val: i64 = distr3.sample(&mut g);
             seg.update(a as i64, b as i64, &val);
             for h in a..b {
-                reference[h as usize] = max(reference[h as usize],val);
+                reference[h as usize] = max(reference[h as usize], val);
             }
             println!("set max: [{},{}), {}", a, b, val);
         }
     }
 
     seg.dbg();
-    
+
     for i in 1..m {
         for j in 1..m + 1 {
             let v = seg.query_range(i as i64, j as i64);
@@ -378,7 +370,11 @@ fn test_seg() {
             for k in i..j {
                 expect = max(expect, reference[k]);
             }
-            assert_eq!(expect, v, "not matching: [{},{}), {}, {:?}", i, j, expect, v);
+            assert_eq!(
+                expect, v,
+                "not matching: [{},{}), {}, {:?}",
+                i, j, expect, v
+            );
         }
     }
 }
