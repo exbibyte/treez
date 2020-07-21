@@ -41,12 +41,27 @@
 ### segment tree
 ```rust
     //summation segment tree
-    let mut seg = SegSum::new(0, m); //max range: [0,m), subsequent operations have to be within this range
+    let mut seg = SegSum::new(0, m); //range: [0,m), subsequent operations have to be within this range
 	let delta : T = ... //T: Add<Output=T> + Mul<i64, Output<T>> + Clone + Default + Debug
     seg.add(a, b, &delta); //add delta to range [a,b)
     seg.update(a, b, &val); //set range [a,b) to val
     ...
     let v : T = seg.query_range(i, j); //query sum in range [i,j)
+	
+	//max segment tree
+    let mut seg = SegMax::new(0, m); //range: [0,m), subsequent operations have to be within this range
+	
+	let delta : T = ... //T: Add<Output=T> + Ord + Debug + Clone + Min
+	//eg: 
+	impl Min for i64 {
+        fn min() -> i64 {
+		    i64::MIN
+		}
+	}
+    seg.add(a, b, &delta); //add delta to range [a,b)
+    seg.update(a, b, &val); //set range [a,b) to max(val,element[i]) for i in [a,b)
+    ...
+    let v : T = seg.query_range(i, j); //query max in range [i,j)
 ```
 
 ### red black tree
