@@ -315,12 +315,12 @@ where
 
 #[test]
 fn test_seg() {
-    const m: usize = 64;
-    let mut seg = SegSum::new(0, m as i64);
-    let mut reference = vec![0; m];
+    const M: usize = 64;
+    let mut seg = SegSum::new(0, M as i64);
+    let mut reference = vec![0; M];
     let mut g = thread_rng();
-    let distr = Uniform::from(0..m as i64);
-    let distr2 = Uniform::from(0..m as i64 + 1);
+    let distr = Uniform::from(0..M as i64);
+    let distr2 = Uniform::from(0..M as i64 + 1);
     let distr3 = Uniform::from(-10..11);
     for _ in 0..10000 {
         if distr.sample(&mut g) % 2 == 0 {
@@ -352,8 +352,8 @@ fn test_seg() {
         }
     }
 
-    for i in 1..m {
-        for j in 1..m + 1 {
+    for i in 1..M {
+        for j in 1..M + 1 {
             let v = seg.query_range(i as i64, j as i64);
             let mut expect = 0;
             for k in i..j {

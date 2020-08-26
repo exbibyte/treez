@@ -8,7 +8,7 @@ use std::collections::VecDeque;
 #[cfg(test)]
 extern crate rand;
 #[cfg(test)]
-use self::rand::{thread_rng, Rng};
+use self::rand::Rng;
 
 pub struct QueueMonotone<T>
 where
@@ -122,20 +122,20 @@ fn test1() {
 fn test2() {
     let mut q: QueueMonotone<i32> = QueueMonotone::new();
 
-    const window: usize = 20;
+    const WINDOW: usize = 20;
 
-    q.set_auto_len(window);
+    q.set_auto_len(WINDOW);
 
     let mut rng = rand::thread_rng();
 
-    let arr: Vec<i32> = (0..100).map(|x| rng.gen_range(-1000, 1000)).collect();
+    let arr: Vec<i32> = (0..100).map(|_| rng.gen_range(-1000, 1000)).collect();
 
     for (i, v) in arr.iter().enumerate() {
         q.push(*v);
 
-        assert!(q.len() <= window);
+        assert!(q.len() <= WINDOW);
 
-        let bound_left = std::cmp::max((i + 1).saturating_sub(window), 0);
+        let bound_left = std::cmp::max((i + 1).saturating_sub(WINDOW), 0);
 
         let m = *q.max().expect("max");
 

@@ -142,7 +142,7 @@ where
 
             //create a special leaf node to handle edge case during fixup if necessary
             self._leaf_remove_index = self._buf.len() as isize;
-            let mut leaf_dummy = Node {
+            let leaf_dummy = Node {
                 _key: Bounded::max_value(),
                 _colour: Colour::Black,
                 _index: self._leaf_remove_index,
@@ -928,13 +928,7 @@ extern crate chrono;
 extern crate rand;
 
 #[cfg(test)]
-use self::chrono::prelude::*;
-#[cfg(test)]
 use rand::distributions::{Distribution, Uniform};
-#[cfg(test)]
-use self::rand::Rng;
-#[cfg(test)]
-use std::collections::BTreeMap;
 
 #[test]
 fn test_rb_insert() {

@@ -1,3 +1,4 @@
+extern crate crossbeam;
 extern crate rand;
 
 pub mod segsum;

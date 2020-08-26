@@ -170,20 +170,18 @@
 
 ### disjoint set
 ```rust
-    let mut v = Dsu::init(10);
-
-    //1, 3, 5, 7 ,9
+    let mut v = Dsu::new(10);
+    let mut arr = vec![];
     for i in 0..5 {
-        let j = i*2+1;
-        v.merge( j, j-1 );
+        let mut node_new = Dsu::new(i);
+        v.merge(&mut node_new);
+        arr.push(node_new);
     }
-
-    let ret = v.get_sets_repr();
-    assert_eq!( ret.len(), 5 );
-
-    v.merge(5,9);
-
-    assert_eq!( v.get_sets_repr().len(), 4 );
+    assert_eq!(v.len(), 6);
+    for (idx,i) in arr.iter_mut().enumerate(){
+        assert!( i.is_same_set(&mut v));
+        assert_eq!( i.get_data(), idx);
+    }
 ```
 
 ### lower_bound, upper_bound

@@ -77,7 +77,7 @@ where
     }
     pub fn range_val(&self) -> T {
         match &self.mark {
-            Some(Change::Abs(v)) => self.s.clone(),
+            Some(Change::Abs(_)) => self.s.clone(),
             Some(Change::Rel(v)) => self.s.clone() + v.clone(),
             _ => self.s.clone(),
         }
@@ -321,15 +321,15 @@ impl Min for i64 {
 }
 #[test]
 fn test_seg() {
-    const m: usize = 64;
-    let mut seg = SegMax::new(0, m as i64);
+    const M: usize = 64;
+    let mut seg = SegMax::new(0, M as i64);
     let mut g = thread_rng();
-    let distr = Uniform::from(0..m as i64);
-    let distr2 = Uniform::from(0..m as i64 + 1);
+    let distr = Uniform::from(0..M as i64);
+    let distr2 = Uniform::from(0..M as i64 + 1);
     let distr3 = Uniform::from(-10..11);
 
-    let mut reference = vec![0; m];
-    seg.update(0, m as i64, &0);
+    let mut reference = vec![0; M];
+    seg.update(0, M as i64, &0);
 
     for _ in 0..1000 {
         if distr.sample(&mut g) % 2 == 0 {
@@ -363,8 +363,8 @@ fn test_seg() {
 
     seg.dbg();
 
-    for i in 1..m {
-        for j in 1..m + 1 {
+    for i in 1..M {
+        for j in 1..M + 1 {
             let v = seg.query_range(i as i64, j as i64);
             let mut expect = i64::MIN;
             for k in i..j {

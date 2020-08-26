@@ -29,7 +29,7 @@ where
 
     /// a[index] += val, index is 0-indexed
     pub fn add(&mut self, index: usize, val: T) {
-        assert!(index + 1 < self.0.len());
+        assert!(index < self.0.len());
         let mut a = index + 1;
         while a < self.0.len() {
             self.0[a] += val.clone();
@@ -37,10 +37,10 @@ where
         }
     }
 
-    /// a[0] + .. + a[index], index is 0-indexed
+    /// for i in [0..index) sum a[i], index is 0-indexed
     pub fn prefix_sum(&mut self, index: usize) -> T {
-        assert!(index + 1 < self.0.len());
-        let mut a = index + 1;
+        assert!(index < self.0.len());
+        let mut a = index;
         let mut s = T::default();
         while a >= 1 {
             s += self.0[a].clone();
@@ -49,23 +49,20 @@ where
         s
     }
 
-    /// a[l] + .. + a[r], l and r 0-indexed
+    /// for i in [l..index) sum a[i], 0-indexed
     pub fn range_sum(&mut self, l: usize, r: usize) -> T {
         assert!(l <= r);
-
         self.prefix_sum(r)
             - if l == 0 {
                 T::default()
             } else {
-                self.prefix_sum(l - 1)
+                self.prefix_sum(l)
             }
     }
 
     /// a[index] = val, index is 0-indexed
     pub fn set(&mut self, index: usize, val: T) {
-        assert!(index + 1 < self.0.len());
-
-        let old = self.range_sum(index, index);
+        let old = self.range_sum(index, index + 1);
         let extra = val - old;
         self.add(index, extra);
     }
@@ -80,38 +77,38 @@ fn test_bit() {
             v.add(i, 5);
         }
 
-        assert_eq!(v.prefix_sum(9), 50);
+        assert_eq!(v.prefix_sum(10), 50);
 
-        assert_eq!(v.range_sum(1, 1), 5);
-        assert_eq!(v.range_sum(1, 3), 15);
+        assert_eq!(v.range_sum(1, 2), 5);
+        assert_eq!(v.range_sum(1, 4), 15);
 
-        assert_eq!(v.prefix_sum(15), 50);
+        assert_eq!(v.prefix_sum(16), 50);
 
         v.add(5, -10);
 
-        assert_eq!(v.prefix_sum(15), 40);
+        assert_eq!(v.prefix_sum(16), 40);
 
-        assert_eq!(v.range_sum(5, 5), -5);
+        assert_eq!(v.range_sum(5, 6), -5);
 
         v.add(6, 20);
 
-        assert_eq!(v.range_sum(5, 6), -5 + 25);
+        assert_eq!(v.range_sum(5, 7), -5 + 25);
 
-        assert_eq!(v.range_sum(0, 15), 60);
+        assert_eq!(v.range_sum(0, 16), 60);
 
-        assert_eq!(v.range_sum(5, 5), -5);
+        assert_eq!(v.range_sum(5, 6), -5);
 
         v.set(5, 50);
 
-        assert_eq!(v.range_sum(5, 5), 50);
-        assert_eq!(v.prefix_sum(15), 115);
+        assert_eq!(v.range_sum(5, 6), 50);
+        assert_eq!(v.prefix_sum(16), 115);
 
-        assert_eq!(v.range_sum(5, 6), 50 + 25);
+        assert_eq!(v.range_sum(5, 7), 50 + 25);
     }
     {
         let w = (0..10).collect::<Vec<_>>();
         let mut v = Bit::init_with(&w[..]);
-        assert_eq!(v.range_sum(0, 9), 9 * 5);
-        assert_eq!(v.range_sum(5, 6), 11);
+        assert_eq!(v.range_sum(0, 10), 9 * 5);
+        assert_eq!(v.range_sum(5, 7), 11);
     }
 }

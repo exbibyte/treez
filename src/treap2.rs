@@ -2,19 +2,20 @@
 //! http://e-maxx.ru/algo/treap
 //! Fast Set Operations Using Treaps: http://www.cs.cmu.edu/afs/cs.cmu.edu/project/scandal/public/papers/treaps-spaa98.html
 
-use std::cell::{RefCell, RefMut};
-use std::cmp::{self, Ordering};
-use std::collections::{HashMap, HashSet};
+use std::cell::RefCell;
+#[cfg(test)]
+use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::f32;
 use std::fmt::Debug;
-use std::mem;
-use std::ops::{Deref, DerefMut};
 use std::rc::{Rc, Weak};
 
 extern crate rand;
 use self::rand::Rng;
 
+#[cfg(test)]
 extern crate chrono;
+#[cfg(test)]
 use self::chrono::prelude::*;
 
 #[derive(Default, Clone, Debug)]
@@ -233,10 +234,10 @@ where
                 //replacing priority require fixup
 
                 //fix upward pass
-                let root = x.fixup_priority();
+                let _root = x.fixup_priority();
 
                 //fix downward pass
-                let root2 = x.fixdown_priority();
+                let _root2 = x.fixdown_priority();
 
                 (self.get_root(), true)
             }
@@ -258,11 +259,11 @@ where
                     x.link_right(&child);
                 }
 
-                let root = child.as_ref().unwrap().fixup_priority();
+                let _root = child.as_ref().unwrap().fixup_priority();
 
                 (self.get_root(), false)
             }
-            Empty => {
+            SearchResult::Empty => {
                 //create new node using current stale node
                 self.0.borrow_mut().invalid = false;
                 self.0.borrow_mut().key = k;
@@ -435,8 +436,7 @@ where
     /// this moves a node with high priority downward
     /// return a node if it is the new root
     pub fn fixdown_priority(&self) -> Option<Self> {
-        let mut x = self.clone();
-        let mut count = 0;
+        let x = self.clone();
 
         let mut root = None;
 
@@ -492,7 +492,6 @@ where
                     break;
                 }
             }
-            count += 1;
         }
         root
     }
@@ -678,7 +677,7 @@ where
         let l = root.child_l();
         let r = root.child_r();
 
-        let t_l = match (l) {
+        let t_l = match l {
             Some(x) => {
                 x.0.borrow_mut().parent = NodePtrWk(Weak::new());
                 root.0.borrow_mut().children.0 = None;
@@ -687,7 +686,7 @@ where
             None => NodePtr::new(),
         };
 
-        let t_r = match (r) {
+        let t_r = match r {
             Some(x) => {
                 x.0.borrow_mut().parent = NodePtrWk(Weak::new());
                 root.0.borrow_mut().children.1 = None;
@@ -719,7 +718,7 @@ where
             n.link_right(&Some(other));
 
             match n.fixdown_priority() {
-                Some(new_root) => n.remove(),
+                Some(_new_root) => n.remove(),
                 _ => {
                     panic!("unexpected root");
                 }
@@ -728,7 +727,7 @@ where
     }
 
     /// returns the union of 2 trees
-    pub fn union(&self, mut other: Self) -> Self {
+    pub fn union(&self, other: Self) -> Self {
         if self.is_empty() && other.is_empty() {
             return self.clone();
         } else if self.is_empty() {
@@ -798,12 +797,12 @@ where
     }
 
     /// returns the intersection of 2 trees
-    pub fn intersect(&self, mut other: Self) -> Self {
+    pub fn intersect(&self, other: Self) -> Self {
         if self.is_empty() || other.is_empty() {
             return NodePtr::new();
         }
 
-        let (mut a, mut b) = if self.prio() < other.prio() {
+        let (mut a, b) = if self.prio() < other.prio() {
             (self.clone(), other.clone())
         } else {
             (other.clone(), self.clone())
@@ -978,7 +977,7 @@ fn test_treap_search() {
         invalid: false,
     };
 
-    let mut n2 = Node {
+    let n2 = Node {
         key: 7.,
         prio: 0.,
         val: 7,
@@ -987,7 +986,7 @@ fn test_treap_search() {
         invalid: false,
     };
 
-    let mut n3 = Node {
+    let n3 = Node {
         key: -1.,
         prio: 0.,
         val: -1,
@@ -996,7 +995,7 @@ fn test_treap_search() {
         invalid: false,
     };
 
-    let mut n4 = Node {
+    let n4 = Node {
         key: 3.,
         prio: 0.,
         val: 3,
@@ -1019,7 +1018,7 @@ fn test_treap_search() {
     let r2 = NodePtr(Rc::new(RefCell::new(n2)));
     n0.children.0 = Some(r1);
     n0.children.1 = Some(r2);
-    let mut r0 = NodePtr(Rc::new(RefCell::new(n0)));
+    let r0 = NodePtr(Rc::new(RefCell::new(n0)));
 
     {
         let weak1 = NodePtrWk::from(&r0);
@@ -1126,7 +1125,7 @@ fn test_treap_search() {
     }
 
     match r0.search(2.) {
-        SearchResult::Exact(mut x) => match x.search(-10.) {
+        SearchResult::Exact(x) => match x.search(-10.) {
             SearchResult::Nearest(y) => {
                 assert!(equal_f32(y.0.borrow().key, -1.));
                 assert_eq!(y.0.borrow().val, -1);
@@ -1188,7 +1187,7 @@ fn test_treap_rotate_0() {
         invalid: false,
     };
 
-    let mut n2 = Node {
+    let n2 = Node {
         key: 7.,
         prio: 0.,
         val: 7,
@@ -1197,7 +1196,7 @@ fn test_treap_rotate_0() {
         invalid: false,
     };
 
-    let mut n3 = Node {
+    let n3 = Node {
         key: -1.,
         prio: 0.,
         val: -1,
@@ -1206,7 +1205,7 @@ fn test_treap_rotate_0() {
         invalid: false,
     };
 
-    let mut n4 = Node {
+    let n4 = Node {
         key: 3.,
         prio: 0.,
         val: 3,
@@ -1229,7 +1228,7 @@ fn test_treap_rotate_0() {
     let r2 = NodePtr(Rc::new(RefCell::new(n2)));
     n0.children.0 = Some(r1);
     n0.children.1 = Some(r2);
-    let mut r0 = NodePtr(Rc::new(RefCell::new(n0)));
+    let r0 = NodePtr(Rc::new(RefCell::new(n0)));
 
     {
         let weak1 = NodePtrWk::from(&r0);
@@ -1249,7 +1248,7 @@ fn test_treap_rotate_0() {
 
     //left rotate up node with key=2
     match r0.search(2.) {
-        SearchResult::Exact(mut x) => {
+        SearchResult::Exact(x) => {
             assert!(equal_f32(x.0.borrow().key, 2.));
 
             let parent_key =
@@ -1303,7 +1302,7 @@ fn test_treap_rotate_1() {
     //      / \
     //(-1)n3  n4(3)
 
-    let mut r0 = {
+    let r0 = {
         let mut n0 = Node {
             key: 5.,
             prio: 0.,
@@ -1322,7 +1321,7 @@ fn test_treap_rotate_1() {
             invalid: false,
         };
 
-        let mut n2 = Node {
+        let n2 = Node {
             key: 7.,
             prio: 0.,
             val: 7,
@@ -1331,7 +1330,7 @@ fn test_treap_rotate_1() {
             invalid: false,
         };
 
-        let mut n3 = Node {
+        let n3 = Node {
             key: -1.,
             prio: 0.,
             val: -1,
@@ -1340,7 +1339,7 @@ fn test_treap_rotate_1() {
             invalid: false,
         };
 
-        let mut n4 = Node {
+        let n4 = Node {
             key: 3.,
             prio: 0.,
             val: 3,
@@ -1386,7 +1385,7 @@ fn test_treap_rotate_1() {
 
     //left rotate up node with key=-1
     match r0.search(-1.) {
-        SearchResult::Exact(mut x) => {
+        SearchResult::Exact(x) => {
             assert!(equal_f32(x.0.borrow().key, -1.));
 
             let parent_key =
@@ -1447,7 +1446,7 @@ fn test_treap_insert_with_priority() {
     //         3     8
     //      1
 
-    let mut t = NodePtr::new();
+    let t = NodePtr::new();
 
     let (t1, _) = t.insert_with_priority(3., 3, 50.);
 
@@ -1502,7 +1501,7 @@ fn test_treap_insert_with_priority_replacement() {
     //            3
     //         6
 
-    let mut t = NodePtr::new();
+    let t = NodePtr::new();
 
     let (t1, _) = t.insert_with_priority(3., 3, 50.);
 
@@ -1558,7 +1557,7 @@ fn test_treap_successor() {
     //         3     8
     //      1
 
-    let mut t = NodePtr::new();
+    let t = NodePtr::new();
 
     let (t1, _) = t.insert_with_priority(3., 3, 50.);
     let (t2, _) = t1.insert_with_priority(1., 1, 75.);
@@ -1603,7 +1602,7 @@ fn test_treap_predecessor() {
     //         3     8
     //      1       7
 
-    let mut t = NodePtr::new();
+    let t = NodePtr::new();
 
     let (t1, _) = t.insert_with_priority(3., 3, 50.);
     let (t2, _) = t1.insert_with_priority(1., 1, 75.);
@@ -1651,7 +1650,7 @@ fn test_treap_query_key_range() {
     //         3     8
     //      1       7
 
-    let mut t = NodePtr::new();
+    let t = NodePtr::new();
 
     let (t1, _) = t.insert_with_priority(3., 3, 50.);
     let (t2, _) = t1.insert_with_priority(1., 1, 75.);
@@ -1880,7 +1879,7 @@ fn test_treap_insert_remove_by_key() {
         expected
             .iter()
             .zip(v.iter())
-            .for_each(|(a, b)| assert!(equal_f32((*a as f32), *b)));
+            .for_each(|(a, b)| assert!(equal_f32(*a as f32, *b)));
     }
 
     let l = items.len() / 2;
@@ -1901,7 +1900,7 @@ fn test_treap_insert_remove_by_key() {
 
         f.iter()
             .zip(v.iter())
-            .for_each(|(a, b)| assert!(equal_f32((*a as f32), *b)));
+            .for_each(|(a, b)| assert!(equal_f32(*a as f32, *b)));
     }
 }
 
@@ -1947,7 +1946,7 @@ fn test_treap_remove_key_range() {
         expected
             .iter()
             .zip(v.iter())
-            .for_each(|(a, b)| assert!(equal_f32((*a as f32), *b)));
+            .for_each(|(a, b)| assert!(equal_f32(*a as f32, *b)));
     }
 
     t = t.remove_by_key_range(-9., 56.);
@@ -1969,7 +1968,7 @@ fn test_treap_remove_key_range() {
 
         f.iter()
             .zip(v.iter())
-            .for_each(|(a, b)| assert!(equal_f32((*a as f32), *b)));
+            .for_each(|(a, b)| assert!(equal_f32(*a as f32, *b)));
     }
 }
 
@@ -2015,7 +2014,7 @@ fn test_treap_split_by_key() {
         expected
             .iter()
             .zip(v.iter())
-            .for_each(|(a, b)| assert!(equal_f32((*a as f32), *b)));
+            .for_each(|(a, b)| assert!(equal_f32(*a as f32, *b)));
     }
 
     let ((t1, t2), _) = t.split_by_key(0.);
@@ -2037,7 +2036,7 @@ fn test_treap_split_by_key() {
 
         f.iter()
             .zip(v.iter())
-            .for_each(|(a, b)| assert!(equal_f32((*a as f32), *b)));
+            .for_each(|(a, b)| assert!(equal_f32(*a as f32, *b)));
     }
 
     {
@@ -2057,7 +2056,7 @@ fn test_treap_split_by_key() {
 
         f.iter()
             .zip(v.iter())
-            .for_each(|(a, b)| assert!(equal_f32((*a as f32), *b)));
+            .for_each(|(a, b)| assert!(equal_f32(*a as f32, *b)));
     }
 }
 
@@ -2103,7 +2102,7 @@ fn test_treap_split_merge() {
         expected
             .iter()
             .zip(v.iter())
-            .for_each(|(a, b)| assert!(equal_f32((*a as f32), *b)));
+            .for_each(|(a, b)| assert!(equal_f32(*a as f32, *b)));
     }
 
     let ((t1, t2), _) = t.split_by_key(0.);
@@ -2122,7 +2121,7 @@ fn test_treap_split_merge() {
         expected
             .iter()
             .zip(v.iter())
-            .for_each(|(a, b)| assert!(equal_f32((*a as f32), *b)));
+            .for_each(|(a, b)| assert!(equal_f32(*a as f32, *b)));
     }
 }
 
@@ -2233,8 +2232,8 @@ fn test_treap_union_empty() {
     }
 
     {
-        let mut t1: NodePtr<f32, i32> = NodePtr::new();
-        let mut t2 = NodePtr::new();
+        let t1: NodePtr<f32, i32> = NodePtr::new();
+        let t2 = NodePtr::new();
         let t3 = t1.union(t2);
         assert!(t3.is_empty());
     }
@@ -2245,7 +2244,7 @@ fn test_treap_union_empty() {
         let va = (0..count).map(|x| x * 2).collect::<Vec<_>>();
 
         let mut t1 = NodePtr::new();
-        let mut t2 = NodePtr::new();
+        let t2 = NodePtr::new();
 
         for i in va.iter() {
             t1 = t1.insert(*i as f32, *i).0;
@@ -2264,7 +2263,7 @@ fn test_treap_union_empty() {
 
             va.iter()
                 .zip(v.iter())
-                .for_each(|(a, b)| assert!(equal_f32((*a as f32), *b)));
+                .for_each(|(a, b)| assert!(equal_f32(*a as f32, *b)));
         }
     }
 
@@ -2273,7 +2272,7 @@ fn test_treap_union_empty() {
 
         let vb = (0..count).map(|x| x * 2 + 1).collect::<Vec<_>>();
 
-        let mut t1 = NodePtr::new();
+        let t1 = NodePtr::new();
         let mut t2 = NodePtr::new();
 
         for i in vb.iter() {
@@ -2293,21 +2292,13 @@ fn test_treap_union_empty() {
 
             vb.iter()
                 .zip(v.iter())
-                .for_each(|(a, b)| assert!(equal_f32((*a as f32), *b)));
+                .for_each(|(a, b)| assert!(equal_f32(*a as f32, *b)));
         }
     }
 }
 
 #[test]
 fn test_treap_union_nonempty() {
-    fn equal_f32(a: f32, b: f32) -> bool {
-        if a - 1e-3 < b && a + 1e-3 > b {
-            true
-        } else {
-            false
-        }
-    }
-
     let count = 1000;
 
     let va = (0..count).map(|x| (x * 2)).collect::<Vec<i32>>();
@@ -2383,17 +2374,9 @@ fn test_treap_union_nonempty() {
 
 #[test]
 fn test_treap_intersect_empty() {
-    fn equal_f32(a: f32, b: f32) -> bool {
-        if a - 1e-4 < b && a + 1e-4 > b {
-            true
-        } else {
-            false
-        }
-    }
-
     {
-        let mut t1: NodePtr<f32, i32> = NodePtr::new();
-        let mut t2 = NodePtr::new();
+        let t1: NodePtr<f32, i32> = NodePtr::new();
+        let t2 = NodePtr::new();
         let t3 = t1.intersect(t2);
         assert!(t3.is_empty());
     }
@@ -2404,7 +2387,7 @@ fn test_treap_intersect_empty() {
         let va = (0..count).map(|x| x * 2).collect::<Vec<_>>();
 
         let mut t1 = NodePtr::new();
-        let mut t2 = NodePtr::new();
+        let t2 = NodePtr::new();
 
         for i in va.iter() {
             t1 = t1.insert(*i as f32, *i).0;
@@ -2428,7 +2411,7 @@ fn test_treap_intersect_empty() {
 
         let vb = (0..count).map(|x| x * 2 + 1).collect::<Vec<_>>();
 
-        let mut t1 = NodePtr::new();
+        let t1 = NodePtr::new();
         let mut t2 = NodePtr::new();
 
         for i in vb.iter() {
@@ -2451,14 +2434,6 @@ fn test_treap_intersect_empty() {
 
 #[test]
 fn test_treap_intersect_nonempty() {
-    fn equal_f32(a: f32, b: f32) -> bool {
-        if a - 1e-3 < b && a + 1e-3 > b {
-            true
-        } else {
-            false
-        }
-    }
-
     let count = 20;
 
     let va = (0..count).map(|x| (x)).collect::<Vec<i32>>();
@@ -2537,14 +2512,6 @@ fn test_treap_intersect_nonempty() {
 
 #[test]
 fn test_treap_intersect_nonempty_2() {
-    fn equal_f32(a: f32, b: f32) -> bool {
-        if a - 1e-3 < b && a + 1e-3 > b {
-            true
-        } else {
-            false
-        }
-    }
-
     let count = 20;
 
     let va = (0..count).map(|x| (x)).collect::<Vec<i32>>();
