@@ -13,8 +13,15 @@ pub mod dsu;
 
 pub mod bit;
 
-#[path = "scc_kosaraju.rs"]
+#[path = "scc_path.rs"]
 pub mod scc;
+
+#[cfg(test)]
+pub mod scc_kosaraju;
+#[cfg(test)]
+pub mod scc_path;
+#[cfg(test)]
+pub mod scc_tarjan;
 
 pub mod backtrack;
 

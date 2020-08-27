@@ -11,6 +11,7 @@
 #### disjoint set
 #### strongly connected components
 #### backtracking
+#### upper/lower_bound
 
 ### monotone queue
 ```rust
@@ -197,4 +198,12 @@
     arr.sort();
     let val = ...
     let idx = bound::lower_bound(&arr[..], &val);
+```
+
+### strongly connected components
+```rust
+    let num_nodes = 4usize;
+	//nodes assumed to be contiguous in range [0,num_nodes)
+    let rel = vec![(0, 1), (1, 2), (2, 0), (1, 3)]; //edges
+    let out = compute(num_nodes, &rel[..]);
 ```
